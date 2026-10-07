@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth bg-zinc-950 text-zinc-100 antialiased selection:bg-lime-400 selection:text-zinc-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineForge AI — The Autonomous AI Showrunner & Visual Continuity Studio</title>
+    <meta name="description" content="Turn scripts into production-ready visual storyboards with locked character consistency, multimodal Claude 5.5 continuity audits, and direct NLE video timeline synchronization.">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d4ff00'><path d='M19 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm-7 11-4-4h8l-4 4z'/></svg>">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        forge: {
+                            lime: '#d4ff00',
+                            limeHover: '#bef000',
+                            accent: '#18181b',
+                            card: '#121215',
+                            border: 'rgba(255,255,255,0.08)'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'Fira Code', 'monospace']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+        .glow-mesh {
+            background: radial-gradient(circle at 50% 0%, rgba(212, 255, 0, 0.12) 0%, rgba(18, 18, 21, 0) 65%);
+        }
+        .grid-pattern {
+            background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+            background-size: 28px 28px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-zinc-950 font-sans">
+
+    <!-- Top Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-xl bg-zinc-950/80 border-b border-forge-border">
+        <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-forge-lime flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-lime-400/20">
+                    <i data-lucide="clapperboard" class="w-5 h-5"></i>
+                </div>
+                <span class="font-extrabold text-lg tracking-tight text-white">CineForge <span class="text-xs uppercase bg-white/10 text-forge-lime font-mono px-2 py-0.5 rounded-full border border-white/10 ml-1">AI</span></span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-zinc-400">
+                <a href="#features" class="hover:text-white transition">Features</a>
+                <a href="#architecture" class="hover:text-white transition">Architecture</a>
+                <a href="#workflow" class="hover:text-white transition">NLE Sync</a>
+                <a href="#pricing" class="hover:text-white transition">Community & Pricing</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="./app.html" class="flex items-center gap-2 bg-forge-lime hover:bg-forge-limeHover text-zinc-950 px-4 py-2 rounded-xl text-xs font-bold tracking-tight shadow-md shadow-lime-400/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                    <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i> Launch Studio
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <main class="relative flex-1">
+        <div class="absolute inset-0 glow-mesh pointer-events-none"></div>
+        <div class="absolute inset-0 grid-pattern opacity-40 pointer-events-none"></div>
+
+        <section class="relative pt-20 pb-16 px-6 max-w-6xl mx-auto text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs text-zinc-300 font-mono mb-8 backdrop-blur-md">
+                <span class="w-2 h-2 rounded-full bg-forge-lime animate-pulse"></span>
+                <span>Powered by Claude 5.5 Multimodal Continuity Engine</span>
+            </div>
+
+            <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white max-w-4xl mx-auto leading-[1.08]">
+                The Autonomous <br class="hidden sm:inline">
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-zinc-200 to-forge-lime">AI Showrunner</span> Studio.
+            </h1>
+
+            <p class="mt-6 text-base sm:text-xl text-zinc-400 max-w-2xl mx-auto leading-relaxed font-normal">
+                Turn scripts and screenplays into cinematic storyboards with locked character likeness, Claude 5.5 visual continuity audits, and 1-click NLE timeline sync.
+            </p>
+
+            <div class="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                <a href="./app.html" class="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-forge-lime hover:bg-forge-limeHover text-zinc-950 font-bold text-sm shadow-xl shadow-lime-400/20 transition-all hover:scale-105 active:scale-95">
+                    <i data-lucide="sparkles" class="w-4 h-4"></i> Enter Studio App (Free)
+                </a>
+                <a href="#features" class="w-full sm:w-auto flex items-center justify-center gap-2 px-7 py-3.5 rounded-2xl bg-zinc-900/80 hover:bg-zinc-800 border border-white/10 text-zinc-300 font-semibold text-sm transition-all">
+                    <i data-lucide="film" class="w-4 h-4 text-zinc-400"></i> Explore Workflow
+                </a>
+            </div>
+
+            <!-- Interactive UI Preview Card -->
+            <div class="mt-16 rounded-3xl border border-forge-border bg-forge-card p-4 sm:p-6 shadow-2xl relative overflow-hidden text-left">
+                <div class="flex items-center justify-between pb-4 border-b border-forge-border flex-wrap gap-3">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-red-500/80"></span>
+                        <span class="w-3 h-3 rounded-full bg-yellow-500/80"></span>
+                        <span class="w-3 h-3 rounded-full bg-green-500/80"></span>
+                        <span class="ml-2 font-mono text-xs text-zinc-400">cineforge-session://scene-01-act-1</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-mono text-[11px] bg-lime-400/10 text-forge-lime px-2.5 py-0.5 rounded-full border border-lime-400/20">Claude Sonnet 5.5: QA Active</span>
+                        <span class="font-mono text-[11px] bg-zinc-800 text-zinc-300 px-2 py-0.5 rounded-full">4x Parallel Render</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                    <!-- Column 1: Consistency Roster -->
+                    <div class="bg-zinc-900/70 rounded-2xl p-4 border border-forge-border space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Character Likeness Lock</span>
+                            <span class="text-[10px] font-mono text-forge-lime bg-lime-400/10 px-1.5 py-0.5 rounded">3-View Lock</span>
+                        </div>
+                        <div class="flex items-center gap-3 bg-zinc-950/60 p-2.5 rounded-xl border border-white/5">
+                            <div class="w-12 h-12 rounded-lg bg-zinc-800 border border-white/10 flex items-center justify-center font-bold text-xs text-zinc-500">
+                                👤 Actor
+                            </div>
+                            <div class="text-xs">
+                                <p class="font-bold text-white">{Gregor MacGregor}</p>
+                                <p class="text-[10px] text-zinc-400">1820s general uniform, scar left cheek, mutton chops</p>
+                            </div>
+                        </div>
+                        <div class="text-[11px] font-mono text-zinc-400 bg-black/40 p-2.5 rounded-lg border border-white/5 space-y-1">
+                            <p class="text-zinc-500">Persistent Biometric Style Bible:</p>
+                            <p class="text-zinc-300">"35mm anamorphic, natural candlelight, muted historical palette, 8K grain"</p>
+                        </div>
+                    </div>
+
+                    <!-- Column 2: Timestamp Storyboard Card -->
+                    <div class="bg-zinc-900/70 rounded-2xl p-4 border border-forge-border space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Shot Frame [00:01:14]</span>
+                            <span class="text-[10px] font-mono bg-green-500/20 text-green-400 px-2 py-0.5 rounded-full font-bold">✅ PASS QA</span>
+                        </div>
+                        <div class="aspect-video rounded-xl bg-zinc-950 border border-white/5 flex flex-col items-center justify-center p-3 relative overflow-hidden group">
+                            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-3">
+                                <p class="text-[11px] text-zinc-200 line-clamp-2">Gregor pitching fraudulent Poyais bonds to London bankers inside candlelit parlor</p>
+                            </div>
+                            <i data-lucide="image" class="w-8 h-8 text-zinc-700"></i>
+                        </div>
+                        <div class="flex items-center justify-between text-[10px] font-mono text-zinc-400">
+                            <span>Format: 16:9 Cinema</span>
+                            <span class="text-amber-400">Timecode: 00:01:14</span>
+                        </div>
+                    </div>
+
+                    <!-- Column 3: Multimodal QA Grader -->
+                    <div class="bg-zinc-900/70 rounded-2xl p-4 border border-forge-border space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-zinc-400">Claude Continuity Audit</span>
+                            <span class="text-[10px] font-mono text-zinc-400">Auto-Evaluated</span>
+                        </div>
+                        <div class="bg-zinc-950/80 p-3 rounded-xl border border-white/5 space-y-2 text-xs">
+                            <div class="flex items-center gap-2">
+                                <i data-lucide="shield-check" class="w-4 h-4 text-forge-lime"></i>
+                                <span class="font-bold text-white">Identity Fidelity: 99.2%</span>
+                            </div>
+                            <p class="text-[11px] text-zinc-400 leading-relaxed">
+                                Facial structure, mutton chops, and military insignia conform exactly to the Reference Sheet.
+                            </p>
+                            <div class="pt-2 border-t border-white/5 flex items-center justify-between font-mono text-[10px]">
+                                <span class="text-zinc-500">Drift Margin: 0.8%</span>
+                                <span class="text-forge-lime">Zero Anomalies</span>
+                            </div>
+                        </div>
+                        <button class="w-full py-2 bg-white/5 hover:bg-white/10 text-zinc-300 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                            <i data-lucide="download" class="w-3.5 h-3.5"></i> Export Timeline ZIP
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Feature Grid -->
+        <section id="features" class="py-24 px-6 max-w-6xl mx-auto border-t border-forge-border">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-forge-lime">Engineered for Production</h2>
+                <h3 class="text-3xl sm:text-4xl font-extrabold text-white mt-2">Everything video directors need. Nothing they don't.</h3>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Feature 1 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="file-text" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">Script Deconstruction</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Claude Haiku 4.5 parses long-form screenplays and YouTube transcripts into shot-by-shot prompt lines with actor bindings <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-white">{Actor}</code> and context tags <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-white">[Scene]</code>.
+                    </p>
+                </div>
+
+                <!-- Feature 2 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">3-Way Reference Locking</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Lock actor likeness across 500+ generated frames. Generates 3-view turnaround reference sheets and extracts 45-word biometric character bibles to prevent face drift.
+                    </p>
+                </div>
+
+                <!-- Feature 3 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="shield-alert" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">Claude 5.5 Visual Continuity QA</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Claude Sonnet 5.5 acts as your digital script supervisor. It inspects every generated frame against references to spot wardrobe mismatches, lighting errors, or extra limbs with instant corrective notes.
+                    </p>
+                </div>
+
+                <!-- Feature 4 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="timer" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">Direct NLE Timeline Sync</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Export clean image assets named by exact timecode (`00-01-14.jpg`) alongside a complete <code class="text-xs bg-white/10 px-1 py-0.5 rounded text-white">timeline_manifest.json</code> ready to drop into Premiere Pro, DaVinci Resolve, or AutoEditor.
+                    </p>
+                </div>
+
+                <!-- Feature 5 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="cpu" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">AIMD Rate Limiting & Web Workers</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        Never worry about 429 rate limit crashes. Built-in adaptive backoff throttling and background Web Worker timers ensure your large batch renders run uninterrupted even when browser tabs are closed.
+                    </p>
+                </div>
+
+                <!-- Feature 6 -->
+                <div class="bg-forge-card p-6 rounded-3xl border border-forge-border hover:border-lime-400/40 transition-all space-y-4">
+                    <div class="w-10 h-10 rounded-xl bg-lime-400/10 text-forge-lime flex items-center justify-center">
+                        <i data-lucide="key" class="w-5 h-5"></i>
+                    </div>
+                    <h4 class="text-lg font-bold text-white">Privacy-First BYOK Security</h4>
+                    <p class="text-sm text-zinc-400 leading-relaxed">
+                        100% client-side architecture. All API keys and generated media stay in your local browser IndexedDB storage. No server log retention, zero cloud lock-in.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Architecture / Workflow Section -->
+        <section id="architecture" class="py-24 px-6 max-w-5xl mx-auto border-t border-forge-border text-center">
+            <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-forge-lime">System Architecture</h2>
+            <h3 class="text-3xl sm:text-4xl font-extrabold text-white mt-2">How the Intelligent Director Operates</h3>
+
+            <div class="mt-12 bg-forge-card rounded-3xl p-6 sm:p-10 border border-forge-border text-left font-mono text-xs text-zinc-300 space-y-6">
+                <div class="flex items-center gap-3 text-sm text-white font-bold border-b border-forge-border pb-3">
+                    <i data-lucide="git-branch" class="w-4 h-4 text-forge-lime"></i>
+                    <span>CineForge Dual-Engine Pipeline</span>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="bg-zinc-950 p-4 rounded-xl border border-white/5 space-y-2">
+                        <span class="text-forge-lime font-bold">1. Script Intelligence</span>
+                        <p class="text-zinc-400 text-[11px] leading-relaxed">
+                            Claude Haiku 4.5 extracts character rosters, scene locations, camera angles, and timecodes from raw video scripts.
+                        </p>
+                    </div>
+                    <div class="bg-zinc-950 p-4 rounded-xl border border-white/5 space-y-2">
+                        <span class="text-forge-lime font-bold">2. Parallel Render Engine</span>
+                        <p class="text-zinc-400 text-[11px] leading-relaxed">
+                            Adaptive 4x-6x parallel workers synthesize frames with locked reference sheets, continuity chaining, and style bibles.
+                        </p>
+                    </div>
+                    <div class="bg-zinc-950 p-4 rounded-xl border border-white/5 space-y-2">
+                        <span class="text-forge-lime font-bold">3. Multimodal Supervisor</span>
+                        <p class="text-zinc-400 text-[11px] leading-relaxed">
+                            Claude Sonnet 5.5 audits output frames for facial likeness, lighting fidelity, and composition, auto-suggesting corrective prompt deltas.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Pricing Section -->
+        <section id="pricing" class="py-24 px-6 max-w-5xl mx-auto border-t border-forge-border text-center">
+            <h2 class="text-xs font-mono font-bold uppercase tracking-widest text-forge-lime">Transparent Access</h2>
+            <h3 class="text-3xl sm:text-4xl font-extrabold text-white mt-2">Free to start. Powered by your own keys.</h3>
+
+            <div class="mt-12 grid grid-cols-1 md:grid-cols-2 gap-8 text-left max-w-3xl mx-auto">
+                <!-- Community Tier -->
+                <div class="bg-forge-card p-8 rounded-3xl border-2 border-lime-400/40 relative space-y-6">
+                    <div class="inline-block px-3 py-1 rounded-full bg-forge-lime/10 text-forge-lime text-xs font-mono font-bold">COMMUNITY EDITION</div>
+                    <div>
+                        <span class="text-4xl font-black text-white">$0</span>
+                        <span class="text-xs text-zinc-400">/ forever (Bring Your Own Key)</span>
+                    </div>
+                    <ul class="space-y-3 text-xs text-zinc-300">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> Complete CineForge Studio Web App</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> Claude Sonnet 5.5 Multimodal QA Grader</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> 3-Way Subject, Scene & Style Likeness Locking</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> Timestamp Sync Mode & AutoEditor ZIP Export</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> Storyboard PDF & ZIP with Formatted Cards</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-forge-lime"></i> Local IndexedDB Storage & Offline Survival</li>
+                    </ul>
+                    <a href="./app.html" class="block text-center py-3 rounded-xl bg-forge-lime hover:bg-forge-limeHover text-zinc-950 font-bold text-xs tracking-tight transition">
+                        Launch Studio App Now
+                    </a>
+                </div>
+
+                <!-- Studio Pro Tier -->
+                <div class="bg-zinc-900/60 p-8 rounded-3xl border border-forge-border space-y-6">
+                    <div class="inline-block px-3 py-1 rounded-full bg-white/10 text-zinc-300 text-xs font-mono font-bold">STUDIO CLOUD</div>
+                    <div>
+                        <span class="text-4xl font-black text-white">$49</span>
+                        <span class="text-xs text-zinc-400">/ seat / month (Coming Soon)</span>
+                    </div>
+                    <ul class="space-y-3 text-xs text-zinc-400">
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-500"></i> Everything in Community Edition</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-500"></i> Hosted Cloud Render Clusters (No API keys needed)</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-500"></i> Real-time Team Collaboration & Multi-Seat Workspaces</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-500"></i> Custom Character LoRA & Actor Embedding Training</li>
+                        <li class="flex items-center gap-2"><i data-lucide="check" class="w-4 h-4 text-zinc-500"></i> Direct Premiere / DaVinci Resolve Studio Plugins</li>
+                    </ul>
+                    <button disabled class="w-full py-3 rounded-xl bg-zinc-800 text-zinc-500 font-bold text-xs tracking-tight cursor-not-allowed">
+                        Join Waitlist
+                    </button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-forge-border py-12 px-6 bg-zinc-950 text-xs text-zinc-500">
+        <div class="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2">
+                <div class="w-5 h-5 rounded bg-forge-lime flex items-center justify-center text-zinc-950 font-black text-[10px]">C</div>
+                <span class="font-bold text-white">CineForge AI</span>
+                <span>— The Autonomous Showrunner Studio.</span>
+            </div>
+            <p>© 2026 CineForge AI. Built for creators. Commercial BYOK License.</p>
+        </div>
+    </footer>
+
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

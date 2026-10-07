@@ -1,0 +1,3068 @@
+<!DOCTYPE html>
+<html lang="en" class="antialiased text-zinc-900 bg-white">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CineForge Studio Pro — Agentic Storyboard & Continuity Engine v3.0</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+tailwind.config = {
+    theme: {
+        extend: {
+            fontFamily: { sans: ['Inter', '-apple-system', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+            colors: {
+                cine: {
+                    lime: '#d4ff00',
+                    limeHover: '#c2eb00',
+                    dark: '#0e0e11',
+                    border: '#e4e4e7'
+                }
+            },
+            animation: {
+                'slide-up': 'slideUp 0.4s ease-out forwards',
+                'fade-in': 'fadeIn 0.2s ease-out forwards',
+                'toast-in': 'toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+                'pulse-subtle': 'pulseSubtle 2s infinite'
+            },
+            keyframes: {
+                slideUp: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                fadeIn: { '0%': { opacity: '0' }, '100%': { opacity: '1' } },
+                toastIn: { '0%': { opacity: '0', transform: 'translateY(100%) scale(0.95)' }, '100%': { opacity: '1', transform: 'translateY(0) scale(1)' } },
+                pulseSubtle: { '0%, 100%': { opacity: '1' }, '50%': { opacity: '0.6' } }
+            }
+        }
+    }
+}
+</script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap');
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background-color: #d4d4d8; border-radius: 6px; }
+.sidebar-left-closed { transform: translateX(-100%); margin-right: -18rem; }
+.sidebar-right-closed { transform: translateX(100%); margin-left: -24rem; }
+
+.card-compact .visual-container { padding-bottom: 0 !important; height: 80px; width: 80px; flex-shrink: 0; border-radius: 12px; margin: 12px; overflow: hidden; }
+.card-compact .visual-container img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+.card-compact .card-body { flex-direction: row; align-items: center; padding: 0; padding-right: 16px; border-top: none; flex: 1; }
+.card-compact { display: flex; flex-direction: row; align-items: center; max-height: 104px; }
+.card-compact .card-actions-group { display: none !important; }
+
+.slot-drag-over { border-color: #18181b !important; background-color: rgba(212,255,0,0.15) !important; transform: scale(1.02); }
+.ref-item-dragging { opacity: 0.5; }
+.canvas-image:active { cursor: grabbing; }
+#selection-box { position: fixed; border: 1px solid rgba(212, 255, 0, 0.9); background-color: rgba(212, 255, 0, 0.15); pointer-events: none; z-index: 40; display: none; }
+.hide-scrollbar::-webkit-scrollbar { display: none; }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+/* Layouts */
+.canvas-grid { display: grid; gap: 20px; align-content: start; }
+.canvas-grid-s { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.canvas-grid-m { grid-template-columns: repeat(auto-fill, minmax(480px, 1fr)); }
+.canvas-grid-l { grid-template-columns: repeat(auto-fill, minmax(760px, 1fr)); }
+.canvas-list { display: flex; flex-direction: column; gap: 10px; }
+.canvas-list .card-item { display: flex; flex-direction: row; align-items: center; max-height: 130px; }
+.canvas-list .visual-container { padding-bottom: 0 !important; height: 110px; width: 195px; flex-shrink: 0; border-radius: 12px; margin: 12px; overflow: hidden; }
+.canvas-list .card-body { border-top: none; flex: 1; padding-right: 16px; }
+.canvas-grid-s .card-body p, .canvas-grid-s .card-meta { display: none; }
+.card-item { content-visibility: auto; contain-intrinsic-size: 480px 420px; }
+.card-item.is-hidden { display: none; }
+.card-item.approved { box-shadow: 0 0 0 2px #22c55e; }
+.card-item.rejected { opacity: .45; }
+.card-item.qa-check { box-shadow: 0 0 0 2px #f59e0b; }
+.card-item.qa-fail  { box-shadow: 0 0 0 2px #ef4444; }
+.card-item.approved.qa-check, .card-item.approved.qa-fail { box-shadow: 0 0 0 2px #22c55e; }
+.no-anim .animate-slide-up { animation: none !important; }
+.status-pill { position: absolute; left: 12px; bottom: 12px; z-index: 15; font: 600 10px/1 Inter, sans-serif; padding: 5px 8px; border-radius: 999px; background: rgba(24,24,27,.9); color: #d4ff00; max-width: 85%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.drop-target-active { outline: 2px dashed #18181b; outline-offset: 2px; background: rgba(212,255,0,.25); }
+.fchip { padding: 4px 11px; border-radius: 999px; font: 600 10px/1 Inter, sans-serif; background: #fff; border: 1px solid #e4e4e7; color: #52525b; cursor: pointer; white-space: nowrap; }
+.fchip.fchip-active { background: #18181b; color: #fff; border-color: #18181b; }
+.mode-btn { padding: 5px 12px; border-radius: 999px; font: 700 11px/1 Inter, sans-serif; color: #52525b; cursor: pointer; }
+.mode-btn.mode-active { background: #18181b; color: #fff; }
+.rv-btn { padding: 4px 12px; border-radius: 8px; font: 700 11px/1 Inter, sans-serif; background: #f4f4f5; color: #52525b; cursor: pointer; }
+.rv-btn.rv-active { background: #18181b; color: #fff; }
+</style>
+</head>
+
+<body class="h-screen w-full flex overflow-hidden bg-zinc-100 selection:bg-lime-300">
+
+<!-- § LEFT SIDEBAR (Consistency Studio) -->
+<aside id="left-sidebar" class="w-72 flex-shrink-0 bg-white border-r border-zinc-200 flex flex-col transition-all duration-300 relative z-20">
+    <div class="h-16 flex items-center px-5 border-b border-zinc-100 justify-between bg-zinc-900 text-white">
+        <div class="flex items-center gap-2">
+            <div class="w-7 h-7 rounded-lg bg-cine-lime text-zinc-950 flex items-center justify-center font-black text-xs">
+                <i data-lucide="clapperboard" class="w-4 h-4"></i>
+            </div>
+            <span class="font-extrabold text-base tracking-tight text-white">CineForge <span class="text-[9px] uppercase bg-white/10 text-cine-lime font-mono px-2 py-0.5 rounded-full ml-1">Pro</span></span>
+        </div>
+        <i data-lucide="panel-left-close" class="w-4 h-4 text-zinc-400 cursor-pointer hover:text-white" onclick="window.toggleSidebar('left-sidebar')"></i>
+    </div>
+
+    <div class="px-5 py-3 border-b border-zinc-100 flex items-center justify-between">
+        <button onclick="window.openProjectModal()" class="flex items-center gap-2 text-xs font-bold text-zinc-800 bg-zinc-50 border border-zinc-200 rounded-xl px-3 py-2 hover:bg-zinc-100 transition w-full justify-between">
+            <span class="flex items-center gap-1.5"><i data-lucide="layers" class="w-3.5 h-3.5 text-zinc-500"></i> <span id="project-name-label">Default Project</span></span>
+            <span class="text-[10px] text-zinc-400">▾</span>
+        </button>
+    </div>
+
+    <div class="px-5 py-3 border-b border-zinc-100">
+        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-600 mb-1 flex items-center justify-between">
+            <span>Project Style Bible</span>
+            <span class="text-[9px] font-mono text-zinc-400">Persistent</span>
+        </label>
+        <textarea id="style-bible" oninput="window.onStyleBibleInput(this.value)" class="w-full min-h-[56px] max-h-32 resize-none bg-zinc-50 border border-zinc-200 rounded-xl p-2.5 text-[11px] text-zinc-800 outline-none placeholder:text-zinc-400 focus:bg-white focus:border-zinc-400 transition" placeholder="Persistent cinematography rules applied to every frame… e.g. 35mm anamorphic, natural candlelight, muted color palette"></textarea>
+    </div>
+
+    <div class="px-5 py-3 border-b border-zinc-100 space-y-2 shrink-0">
+        <button onclick="window.newSession()" class="w-full flex items-center justify-center gap-2 bg-zinc-900 text-white rounded-xl py-2 text-xs font-semibold hover:bg-zinc-800 transition shadow-sm">
+            <i data-lucide="plus" class="w-3.5 h-3.5"></i> New Canvas
+        </button>
+        <div class="flex gap-2">
+            <button onclick="window.openHistoryModal()" class="flex-1 flex items-center justify-center gap-1.5 bg-zinc-50 text-zinc-700 border border-zinc-200 rounded-xl py-1.5 text-xs font-semibold hover:bg-zinc-100 transition shadow-sm">
+                <i data-lucide="history" class="w-3.5 h-3.5"></i> Sessions
+            </button>
+            <button onclick="window.openApiModal()" class="flex-1 flex items-center justify-center gap-1.5 bg-zinc-50 text-zinc-700 border border-zinc-200 rounded-xl py-1.5 text-xs font-semibold hover:bg-zinc-100 transition shadow-sm" title="Configure Claude & Image API Keys">
+                <i data-lucide="key" class="w-3.5 h-3.5 text-amber-500"></i> API Keys
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 overflow-y-auto p-5 space-y-7 pb-20" id="sidebar-lists"></div>
+    <input type="file" id="file-upload" class="hidden" accept="image/*" onchange="window.handleFileSelect(event)">
+</aside>
+
+<!-- § MAIN CANVAS -->
+<main class="flex-1 flex flex-col relative bg-zinc-50 min-w-0 transition-all duration-300">
+    <header class="absolute top-0 left-0 right-0 h-16 flex items-center justify-between px-6 z-20 pointer-events-none">
+        <div class="flex items-center gap-2">
+            <button onclick="window.toggleSidebar('left-sidebar')" class="pointer-events-auto p-2 bg-white rounded-full shadow-sm border border-zinc-200 hover:bg-zinc-50 text-zinc-600 transition-all" title="Toggle Cast & Likeness Sidebar"><i data-lucide="panel-left" class="w-4 h-4"></i></button>
+            <button onclick="window.cycleLayout()" class="pointer-events-auto p-2 bg-white rounded-full shadow-sm border border-zinc-200 hover:bg-zinc-50 text-zinc-600 transition-all" title="Cycle layout view"><i data-lucide="grid-2x2" class="w-4 h-4"></i></button>
+            <select id="layout-select" onchange="window.setLayout(this.value)" class="pointer-events-auto appearance-none bg-white shadow-sm border border-zinc-200 hover:bg-zinc-50 text-zinc-600 text-[11px] font-bold py-1.5 pl-3 pr-6 rounded-full cursor-pointer outline-none">
+                <option value="grid-s">Grid S</option>
+                <option value="grid-m" selected>Grid M</option>
+                <option value="grid-l">Grid L</option>
+                <option value="list">List</option>
+            </select>
+            <select id="sort-select" onchange="window.setSort(this.value)" class="pointer-events-auto appearance-none bg-white shadow-sm border border-zinc-200 hover:bg-zinc-50 text-zinc-600 text-[11px] font-bold py-1.5 pl-3 pr-6 rounded-full cursor-pointer outline-none">
+                <option value="order">Order</option>
+                <option value="timecode" id="sort-tc-option" hidden>Timecode</option>
+                <option value="attention">Needs attention first</option>
+                <option value="newest">Newest first</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div class="pointer-events-auto flex bg-white rounded-full shadow-sm border border-zinc-200 p-0.5">
+                <button id="mode-std-btn" onclick="window.setMode('standard')" class="mode-btn mode-active">Standard</button>
+                <button id="mode-ts-btn" onclick="window.setMode('timestamp')" class="mode-btn">⏱ Timeline Sync</button>
+            </div>
+            <button onclick="window.openApiModal()" class="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-zinc-50 text-zinc-700 font-bold text-xs rounded-full shadow-sm border border-zinc-200 transition-all" title="Setup Keys">
+                <i data-lucide="shield-check" class="w-3.5 h-3.5 text-green-500"></i> BYOK
+            </button>
+            <button onclick="window.toggleSidebar('right-sidebar')" class="pointer-events-auto flex items-center gap-2 px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-white font-semibold text-xs rounded-full shadow-sm transition-all border border-black/10">
+                <i data-lucide="list-video" class="w-3.5 h-3.5 text-cine-lime"></i> Batch Studio
+            </button>
+        </div>
+    </header>
+
+    <!-- Batch Action Bar -->
+    <div id="batch-action-bar" class="absolute top-4 left-1/2 transform -translate-x-1/2 bg-zinc-900 text-white px-4 py-2 rounded-full shadow-xl flex items-center gap-3 z-30 opacity-0 pointer-events-none transition-all duration-200 scale-95 flex-wrap max-w-[95vw]">
+        <span class="text-xs font-mono"><span id="selected-count">0</span> selected</span>
+        <div class="w-px h-4 bg-zinc-700"></div>
+        <button onclick="window.selectAllVisibleCards()" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="check-square" class="w-3.5 h-3.5"></i> All</button>
+        <div class="w-px h-4 bg-zinc-700"></div>
+        <button onclick="window.moveSelectedToCategory('subject')" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="user" class="w-3.5 h-3.5"></i> Subject</button>
+        <button onclick="window.moveSelectedToCategory('scene')" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="image" class="w-3.5 h-3.5"></i> Scene</button>
+        <button onclick="window.moveSelectedToCategory('style')" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="palette" class="w-3.5 h-3.5"></i> Style</button>
+        <div class="w-px h-4 bg-zinc-700"></div>
+        <button onclick="window.approveSelected()" class="text-xs hover:text-green-400 transition-colors flex items-center gap-1"><i data-lucide="check" class="w-3.5 h-3.5"></i> Approve</button>
+        <button onclick="window.rejectSelected()" class="text-xs hover:text-red-400 transition-colors flex items-center gap-1"><i data-lucide="x" class="w-3.5 h-3.5"></i> Reject</button>
+        <button onclick="window.regenerateSelected()" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i> Regenerate</button>
+        <button onclick="window.retryFailed(true)" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> Retry</button>
+        <div class="w-px h-4 bg-zinc-700"></div>
+        <button onclick="window.downloadSelectedImages()" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="image" class="w-3.5 h-3.5"></i> Images</button>
+        <button onclick="window.downloadSelectedPdf()" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="file-text" class="w-3.5 h-3.5"></i> PDF</button>
+        <button onclick="window.downloadSelectedZip()" class="text-xs hover:text-cine-lime transition-colors flex items-center gap-1"><i data-lucide="file-archive" class="w-3.5 h-3.5"></i> Cards ZIP</button>
+        <button onclick="window.downloadAutoEditorZip()" class="ts-only text-xs bg-lime-400/20 hover:bg-lime-400/40 text-lime-300 px-2.5 py-1 rounded-full transition-all flex items-center gap-1 font-semibold border border-lime-400/30" title="Export Clean Images with timeline_manifest.json for NLE Video Sync" hidden><i data-lucide="play-square" class="w-3.5 h-3.5 text-lime-300"></i> NLE Timeline ZIP</button>
+        <button onclick="window.deleteSelected()" class="text-xs hover:text-red-400 transition-colors flex items-center gap-1"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Delete</button>
+        <button onclick="window.clearSelection()" class="text-zinc-400 hover:text-white ml-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+
+    <!-- Toolbar Strip -->
+    <div id="canvas-toolbar-strip" class="absolute top-16 left-0 right-0 z-10 px-6 py-1.5 flex items-center justify-between gap-2 flex-wrap pointer-events-none">
+        <div class="pointer-events-auto flex items-center gap-2 text-[11px] font-bold text-zinc-500">
+            <span id="toolbar-counts">0 images</span>
+            <button onclick="window.nextFlagged()" class="px-2.5 py-1 bg-white border border-zinc-200 rounded-full hover:border-amber-400 hover:text-amber-600 transition-colors" title="Jump to next flagged/error card (F)">Next flagged ▸</button>
+        </div>
+        <div class="pointer-events-auto flex gap-1 overflow-x-auto hide-scrollbar" id="filter-chips">
+            <button onclick="window.setFilter('all')" data-f="all" class="fchip fchip-active">All</button>
+            <button onclick="window.setFilter('review')" data-f="review" class="fchip">Needs review</button>
+            <button onclick="window.setFilter('failed')" data-f="failed" class="fchip">Failed</button>
+            <button onclick="window.setFilter('flagged')" data-f="flagged" class="fchip">Flagged</button>
+            <button onclick="window.setFilter('approved')" data-f="approved" class="fchip">Approved</button>
+            <button onclick="window.setFilter('unreviewed')" data-f="unreviewed" class="fchip">Unreviewed</button>
+            <button onclick="window.setFilter('anchors')" data-f="anchors" class="fchip">Anchors</button>
+        </div>
+    </div>
+
+    <div id="canvas-container" class="canvas-grid canvas-grid-m flex-1 overflow-y-auto px-6 pt-24 pb-44 select-none">
+        <div id="empty-state" class="w-full col-span-full flex flex-col items-center justify-center opacity-70 mt-20 pointer-events-none">
+            <i data-lucide="clapperboard" class="w-12 h-12 text-zinc-300 mb-4"></i>
+            <h2 class="text-xl font-bold text-zinc-800">CineForge Canvas</h2>
+            <p class="text-zinc-500 text-sm" id="empty-state-text">Type a cinematic prompt, paste a script batch, or drag reference images into the sidebar.</p>
+        </div>
+    </div>
+    <div id="selection-box"></div>
+
+    <!-- Compose Wrap -->
+    <div id="compose-wrap" class="absolute bottom-6 left-1/2 transform -translate-x-1/2 w-full max-w-4xl px-4 z-20 flex flex-col gap-2">
+        <div id="continuity-chip-row" class="hidden flex gap-2">
+            <div class="flex items-center gap-2 bg-white border border-zinc-200 rounded-full pl-1.5 pr-3 py-1.5 shadow-sm">
+                <img id="continuity-thumb" class="w-8 h-8 rounded-full object-cover bg-zinc-100" src="">
+                <span class="text-[11px] font-bold text-zinc-700">🔗 Continuity frame attached</span>
+                <button onclick="window.clearContinuityFrame()" class="text-zinc-400 hover:text-red-500"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+        <div class="flex gap-2 overflow-x-auto pb-1 px-1 hide-scrollbar" id="style-chips">
+            <button onclick="window.appendStyle('Cinematic Lighting, 8k, Unreal Engine 5',event)" class="shrink-0 px-3 py-1 bg-white/80 backdrop-blur rounded-full text-[11px] font-bold text-zinc-600 shadow-sm border border-zinc-200 hover:bg-zinc-900 hover:text-white transition-colors">🎬 Cinematic</button>
+            <button onclick="window.appendStyle('Anime style, Studio Ghibli, highly detailed',event)" class="shrink-0 px-3 py-1 bg-white/80 backdrop-blur rounded-full text-[11px] font-bold text-zinc-600 shadow-sm border border-zinc-200 hover:bg-zinc-900 hover:text-white transition-colors">🌸 Anime</button>
+            <button onclick="window.appendStyle('35mm anamorphic film, natural daylight, photorealistic',event)" class="shrink-0 px-3 py-1 bg-white/80 backdrop-blur rounded-full text-[11px] font-bold text-zinc-600 shadow-sm border border-zinc-200 hover:bg-zinc-900 hover:text-white transition-colors">🎞️ 35mm Film</button>
+            <button onclick="window.appendStyle('Cyberpunk, neon lights, futuristic city, dark mood',event)" class="shrink-0 px-3 py-1 bg-white/80 backdrop-blur rounded-full text-[11px] font-bold text-zinc-600 shadow-sm border border-zinc-200 hover:bg-zinc-900 hover:text-white transition-colors">🌃 Cyberpunk</button>
+            <button onclick="window.appendStyle('Graphic novel, high contrast ink, noir atmosphere',event)" class="shrink-0 px-3 py-1 bg-white/80 backdrop-blur rounded-full text-[11px] font-bold text-zinc-600 shadow-sm border border-zinc-200 hover:bg-zinc-900 hover:text-white transition-colors">✒️ Noir Comic</button>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl border border-zinc-200/80 p-2 flex items-end gap-2 focus-within:ring-4 ring-lime-400/30 transition-all">
+            <button onclick="window.triggerQuickUpload()" title="Add Reference Image" class="flex items-center justify-center h-[44px] w-[44px] bg-zinc-100 hover:bg-zinc-200 text-zinc-600 rounded-xl transition-colors shrink-0">
+                <i data-lucide="image-plus" class="w-5 h-5"></i>
+            </button>
+            <select id="model-select" class="appearance-none bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold py-2.5 pl-3 pr-8 rounded-xl cursor-pointer outline-none h-[44px]">
+                <option value="gemini-3.1-flash-image-preview" selected>Gemini 3.1 Flash</option>
+                <option value="gemini-2.5-flash-image-preview">Gemini 2.5 Flash</option>
+                <option value="imagen-4.0-generate-001">Imagen 4.0</option>
+            </select>
+            <div class="relative group h-[44px] flex items-center shrink-0">
+                <select id="aspect-ratio" onchange="window.handleRatioChange()" class="appearance-none bg-zinc-100 hover:bg-zinc-200 text-zinc-700 text-xs font-semibold py-2.5 pl-3 pr-8 rounded-xl cursor-pointer outline-none h-full w-full">
+                    <option value="1:1">1:1 Square</option>
+                    <option value="16:9" selected>16:9 Cinema</option>
+                    <option value="9:16">9:16 Vertical</option>
+                    <option value="custom">Custom...</option>
+                </select>
+                <input type="text" id="custom-ratio-input" class="absolute inset-0 w-full h-full bg-zinc-100 rounded-xl text-xs font-semibold px-3 outline-none focus:ring-2 ring-black hidden text-center placeholder:text-zinc-400" placeholder="e.g. 21:9" onblur="window.checkCustomRatioBlur()">
+            </div>
+            <textarea id="main-prompt" rows="1" class="flex-1 bg-transparent text-zinc-900 text-sm py-3 px-2 resize-none outline-none max-h-32 min-h-[44px]" placeholder="Describe what you want to create… {Character} binds actor, [context] tags scene, > chains shot, @16:9 x2 #seed" oninput="window.autoGrow(this)" onkeydown="window.handleEnter(event)"></textarea>
+            <button id="btn-generate" onclick="window.generateSingle()" class="bg-zinc-900 text-white rounded-xl px-5 h-[44px] flex items-center gap-2 hover:bg-zinc-800 disabled:opacity-50 transition font-semibold text-xs tracking-wide"><i data-lucide="sparkles" class="w-4 h-4 text-cine-lime"></i> Render</button>
+            <button id="btn-stop-generate" onclick="window.stopGeneration()" class="hidden bg-red-600 text-white rounded-xl px-4 h-[44px] flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 font-semibold text-xs"><i data-lucide="square" class="w-4 h-4"></i> Stop</button>
+        </div>
+    </div>
+</main>
+
+<!-- § RIGHT SIDEBAR (Batch & Timeline Sync) -->
+<aside id="right-sidebar" class="w-96 flex-shrink-0 bg-white border-l border-zinc-200 flex flex-col transition-all duration-300 sidebar-right-closed relative z-30 shadow-2xl">
+    <div class="h-16 flex items-center px-5 border-b border-zinc-100 justify-between bg-zinc-900 text-white">
+        <span class="font-bold text-sm flex items-center gap-2"><i data-lucide="list-video" class="w-4 h-4 text-cine-lime"></i> CineBatch & Timeline Sync</span>
+        <button onclick="window.toggleSidebar('right-sidebar')" class="text-zinc-400 hover:text-white p-1"><i data-lucide="x" class="w-5 h-5"></i></button>
+    </div>
+
+    <div class="p-5 flex-1 flex flex-col overflow-y-auto space-y-4">
+        <div class="bg-gradient-to-r from-zinc-900 to-zinc-950 text-white border border-white/10 rounded-2xl p-3.5 space-y-2.5 transition-all">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-7 h-7 rounded-xl bg-lime-400/20 text-cine-lime flex items-center justify-center font-bold text-xs">⏱️</div>
+                    <div>
+                        <h4 class="text-xs font-bold text-white">Timeline Sync Mode</h4>
+                        <p class="text-[10px] text-zinc-400">Export timestamped assets for NLE Editors</p>
+                    </div>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="timestamp-mode-toggle" class="sr-only peer" onchange="window.mirrorMode(this.checked)">
+                    <div class="w-9 h-5 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-lime-500"></div>
+                </label>
+            </div>
+            <div id="timestamp-mode-options" class="ts-only pt-1 space-y-2 text-[11px] text-zinc-300 border-t border-white/10" hidden>
+                <div class="flex items-center justify-between">
+                    <span class="font-medium text-xs">File Format:</span>
+                    <select id="timestamp-filename-format" class="bg-zinc-800 border border-white/10 rounded-lg text-[10px] font-semibold text-zinc-200 px-2 py-1 outline-none">
+                        <option value="hyphens" selected>00-01-14.jpg (Standard NLE)</option>
+                        <option value="underscores">00_01_14.jpg</option>
+                        <option value="dots">00.01.14.jpg</option>
+                        <option value="seconds">74.jpg (Total Seconds)</option>
+                    </select>
+                </div>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="ae-approved-only" onchange="this.dataset.touched='1'">
+                    <span class="font-medium">Approved shots only (NLE ZIP)</span>
+                </label>
+            </div>
+        </div>
+
+        <p id="batch-help-text" class="text-xs text-zinc-500">One prompt per line. {Actor} binds subject, [context] tags scene, &gt; chains shot, @16:9 x2 !noscene #seed.</p>
+
+        <div id="batch-stats" class="text-[11px] font-semibold text-zinc-500 flex flex-col justify-center bg-zinc-100 px-3 py-2 rounded-lg hidden transition-all">
+            <div class="flex justify-between items-center w-full">
+                <span id="batch-counter">0 images queued</span>
+                <span id="batch-timer" class="text-zinc-700 font-mono">00:00</span>
+            </div>
+            <div class="w-full bg-zinc-200 rounded-full h-1.5 mt-1.5 overflow-hidden">
+                <div id="batch-progress" class="bg-zinc-900 h-1.5 rounded-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <div id="batch-health" class="hidden text-[10px] text-zinc-500 mt-1"></div>
+        </div>
+
+        <div class="flex justify-between items-center">
+            <label class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Parallel Workers</label>
+            <select id="batch-concurrency" class="bg-zinc-100 border border-zinc-200 rounded text-[10px] font-bold text-zinc-600 px-1.5 py-0.5 outline-none cursor-pointer hover:bg-zinc-200 transition">
+                <option value="3">3x Parallel</option>
+                <option value="4" selected>4x Parallel</option>
+                <option value="5">5x Parallel</option>
+                <option value="6">6x Max (Flex)</option>
+            </select>
+        </div>
+
+        <div class="flex items-center gap-3 flex-wrap text-[10px] font-bold text-zinc-600">
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="seed-lock-toggle" onchange="window.toggleSeedLock(this.checked)"> 🔒 Lock seed</label>
+            <span id="seed-input-wrap" class="hidden items-center gap-1"><input type="number" id="seed-value" class="w-24 bg-zinc-100 border border-zinc-200 rounded px-1.5 py-0.5 outline-none" oninput="window.setSeedValue(this.value)"></span>
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="auto-anchor-toggle" checked onchange="window.setAutoAnchor(this.checked)"> 📌 Auto-anchor</label>
+            <label class="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" id="qa-toggle" checked onchange="window.setQaEnabled(this.checked)"> 🔍 Claude QA Review</label>
+        </div>
+
+        <div class="flex items-center justify-between">
+            <span class="text-[10px] font-bold text-zinc-500 uppercase tracking-wider">Batch Lines</span>
+            <button onclick="window.openCastBuilder()" class="text-[10px] font-bold text-zinc-700 hover:text-zinc-900 bg-zinc-100 hover:bg-zinc-200 px-2.5 py-1 rounded-lg transition">👥 Cast from Roster</button>
+        </div>
+
+        <div class="flex-1 min-h-[160px] bg-zinc-50 border border-zinc-200 rounded-xl flex flex-col">
+            <textarea id="batch-input" class="flex-1 w-full h-full bg-transparent p-3 text-xs font-mono resize-none outline-none" placeholder="{Gregor MacGregor} Scottish con man in 1820s military uniform&#10;{British Banker} Wealthy Victorian aristocrat in top hat&#10;> same man, eyes now open, same bed and room" oninput="window.updateBatchCount(true)"></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-1 pb-2">
+            <button id="btn-batch" onclick="window.runBatch()" class="col-span-2 w-full bg-zinc-900 text-white font-bold py-3 rounded-xl shadow-sm hover:bg-zinc-800 transition flex items-center justify-center gap-1.5 text-xs tracking-wide"><i data-lucide="play" class="w-4 h-4 text-cine-lime"></i> Run CineBatch</button>
+            <button id="btn-pause-batch" onclick="window.pauseBatch()" class="hidden w-full bg-zinc-800 text-white font-semibold py-3 rounded-xl shadow-sm hover:bg-zinc-700 transition flex items-center justify-center gap-1.5 text-xs"><i data-lucide="pause" class="w-4 h-4"></i> Pause</button>
+            <button id="btn-resume-batch" onclick="window.resumeBatch()" class="hidden w-full bg-zinc-100 text-zinc-900 font-semibold py-3 rounded-xl shadow-sm hover:bg-zinc-200 transition flex items-center justify-center gap-1.5 text-xs"><i data-lucide="play" class="w-4 h-4"></i> Resume</button>
+            <button id="btn-stop-batch" onclick="window.stopBatch()" class="hidden col-span-2 w-full bg-red-600 text-white font-semibold py-3 rounded-xl shadow-sm hover:bg-red-700 transition flex items-center justify-center gap-1.5 text-xs"><i data-lucide="square" class="w-4 h-4"></i> Stop Batch</button>
+            <button id="btn-retry-failed" onclick="window.retryFailed(false)" class="hidden col-span-2 w-full bg-zinc-100 text-zinc-900 font-semibold py-2.5 rounded-xl shadow-sm hover:bg-zinc-200 transition flex items-center justify-center gap-1.5 text-xs"><i data-lucide="rotate-ccw" class="w-4 h-4"></i> Retry Failed</button>
+        </div>
+    </div>
+</aside>
+
+<!-- § LIGHTBOX -->
+<div id="lightbox" class="fixed inset-0 bg-black/95 z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300 touch-pan-y">
+    <button onclick="window.closeLightbox()" class="absolute top-6 right-6 text-white/70 hover:text-white p-2 transition z-10"><i data-lucide="x" class="w-8 h-8"></i></button>
+    <button id="lightbox-regen-btn" onclick="window.regenerateFromLightbox()" class="absolute top-6 right-20 text-white/70 hover:text-lime-300 p-2 transition z-10" title="Regenerate this image (R)"><i data-lucide="refresh-cw" class="w-7 h-7"></i></button>
+    <button onclick="window.lbApprove()" class="absolute top-6 right-36 text-white/70 hover:text-green-400 p-2 transition z-10" title="Approve (A)"><i data-lucide="check" class="w-7 h-7"></i></button>
+    <button onclick="window.lbReject()" class="absolute top-6 right-[13rem] text-white/70 hover:text-red-400 p-2 transition z-10" title="Reject (X)"><i data-lucide="x" class="w-7 h-7"></i></button>
+    <button onclick="window.lbTogglePin()" class="absolute top-6 right-[16.5rem] text-white/70 hover:text-cine-lime p-2 transition z-10" title="Pin anchor (P)"><i data-lucide="pin" class="w-7 h-7"></i></button>
+    <button onclick="window.lbDownload()" class="absolute top-6 right-[20rem] text-white/70 hover:text-white p-2 transition z-10" title="Download (D)"><i data-lucide="download" class="w-7 h-7"></i></button>
+    <button onclick="window.prevLightboxImage()" class="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition z-10"><i data-lucide="chevron-left" class="w-7 h-7"></i></button>
+    <button onclick="window.nextLightboxImage()" class="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 text-white/70 hover:text-white bg-white/10 hover:bg-white/20 rounded-full p-3 transition z-10"><i data-lucide="chevron-right" class="w-7 h-7"></i></button>
+    <div class="w-full h-full flex flex-col items-center justify-center px-16">
+        <div class="relative flex items-center justify-center">
+            <img id="lightbox-img" src="" class="max-w-[92vw] max-h-[68vh] object-contain rounded-lg shadow-2xl select-none">
+            <div id="lightbox-context-overlay" class="hidden absolute top-3 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur text-cine-lime px-4 py-1.5 rounded-full text-sm font-bold max-w-[85%] truncate pointer-events-none"></div>
+            <span id="lightbox-timecode" class="ts-only absolute top-3 right-3 px-2.5 py-0.5 bg-lime-400 text-zinc-950 font-mono font-bold rounded-full text-xs shadow-sm pointer-events-none" hidden></span>
+        </div>
+        <div class="mt-3 flex items-center gap-2">
+            <span id="lightbox-counter" class="text-white/60 text-sm font-medium"></span>
+            <span id="lightbox-model" class="px-2 py-0.5 bg-white/10 rounded text-xs text-white/50 border border-white/10 tracking-wide"></span>
+        </div>
+        <div id="lightbox-qa" class="hidden mt-2 max-w-4xl px-4 text-center">
+            <div class="flex items-center justify-center gap-2 flex-wrap">
+                <span id="lightbox-qa-verdict" class="font-mono font-bold text-xs px-2.5 py-1 rounded-full"></span>
+                <span id="lightbox-qa-issues" class="text-white/70 text-xs font-medium"></span>
+            </div>
+            <p id="lightbox-qa-fix" class="text-lime-300 hover:text-lime-200 mt-1 text-xs font-semibold cursor-pointer" onclick="window.regenerateFromLightbox()" title="Click to open Regenerate — the suggested fix is pre-loaded there"></p>
+        </div>
+        <p id="lightbox-prompt" class="text-white/85 mt-2 text-base font-medium max-w-4xl text-center px-4"></p>
+        <p class="text-white/25 text-[10px] mt-3 font-mono tracking-wide">A approve · X reject · R regen · P pin · D download · F next flagged</p>
+    </div>
+</div>
+
+<!-- § API SETTINGS MODAL (BYOK) -->
+<div id="api-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[75] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl border border-zinc-200">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 rounded-lg bg-zinc-900 text-cine-lime flex items-center justify-center font-bold text-xs">
+                    <i data-lucide="key" class="w-4 h-4"></i>
+                </div>
+                <h3 class="text-base font-bold text-zinc-900">API Configuration (BYOK)</h3>
+            </div>
+            <button onclick="window.closeApiModal()" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <p class="text-xs text-zinc-500 mb-4 leading-relaxed">
+            All API keys are encrypted in your local browser's <code class="font-mono text-zinc-700 bg-zinc-100 px-1 rounded">localStorage</code>. They are never sent to external logging servers.
+        </p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1 flex items-center justify-between">
+                    <span>Anthropic Claude API Key</span>
+                    <span class="text-[10px] text-green-600 font-mono">QA & Director</span>
+                </label>
+                <input type="password" id="cfg-claude-key" class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-900 rounded-xl p-2.5 text-xs font-mono outline-none" placeholder="sk-ant-api03-...">
+                <p class="text-[10px] text-zinc-400 mt-1">Powers Claude Sonnet 5.5 Visual Continuity QA Grader & Character Profiler.</p>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold uppercase tracking-wider text-zinc-700 mb-1 flex items-center justify-between">
+                    <span>Image Render API Key</span>
+                    <span class="text-[10px] text-zinc-500 font-mono">Generative Vision</span>
+                </label>
+                <input type="password" id="cfg-image-key" class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-900 rounded-xl p-2.5 text-xs font-mono outline-none" placeholder="AIzaSy... (Gemini / Imagen / Custom)">
+                <p class="text-[10px] text-zinc-400 mt-1">Leave blank to use default environment provider or enter custom key.</p>
+            </div>
+        </div>
+
+        <div class="flex justify-end gap-2 mt-6">
+            <button onclick="window.closeApiModal()" class="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl font-semibold text-xs">Cancel</button>
+            <button onclick="window.saveApiSettings()" class="px-5 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs transition">Save Keys</button>
+        </div>
+    </div>
+</div>
+
+<!-- § HISTORY MODAL -->
+<div id="history-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-zinc-100 flex justify-between items-center">
+            <h3 class="text-base font-bold text-zinc-900">CineForge Sessions</h3>
+            <button onclick="window.closeHistoryModal()" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div id="history-list" class="flex-1 overflow-y-auto p-4 space-y-2 bg-zinc-50"></div>
+    </div>
+</div>
+
+<!-- § REGENERATE MODAL -->
+<div id="regenerate-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl max-h-[88vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-bold text-zinc-900">Regenerate Shot with Notes</h3>
+            <button onclick="window.closeRegenerateModal()" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+
+        <div class="flex items-center gap-2 mb-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-zinc-500">Original Context &amp; Time</p>
+            <span id="regen-timecode-badge" class="hidden ts-only px-2 py-0.5 bg-lime-100 text-lime-900 rounded font-mono text-[10px] font-bold"></span>
+        </div>
+        <div id="regen-original-context" class="text-sm bg-lime-100 text-lime-900 p-2 px-3 rounded-xl mb-3 font-semibold empty:hidden"></div>
+
+        <div id="regen-base-section">
+            <p class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1">Base Prompt</p>
+            <textarea id="regen-base-prompt" class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-400 rounded-xl p-3 text-sm outline-none resize-none h-20 mb-3"></textarea>
+        </div>
+
+        <div class="flex items-center gap-2 mb-3">
+            <input type="hidden" id="regen-mode-value" value="append">
+            <button id="regen-mode-append" onclick="window.setRegenMode('append')" class="rv-btn rv-active">Append notes</button>
+            <button id="regen-mode-replace" onclick="window.setRegenMode('replace')" class="rv-btn">Replace prompt</button>
+        </div>
+
+        <div class="flex items-center justify-between mb-2 flex-wrap gap-2">
+            <p class="text-xs font-bold uppercase tracking-wider text-zinc-500">Continuity Adjustments</p>
+            <div class="flex gap-1.5 flex-wrap">
+                <button onclick="window.addRegenTemplate(1)" class="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-2 py-1 rounded transition-colors">Fix Character Likeness</button>
+                <button onclick="window.addRegenTemplate(2)" class="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-2 py-1 rounded transition-colors">Fix Environment</button>
+                <button id="regen-fix-chip" onclick="window.applySuggestedFix()" class="hidden text-[10px] bg-lime-100 hover:bg-lime-200 text-lime-900 px-2 py-1 rounded transition-colors font-bold">✨ Apply QA Fix</button>
+                <button onclick="window.addRegenTemplate(3)" class="text-[10px] bg-zinc-100 hover:bg-zinc-200 text-zinc-600 px-2 py-1 rounded transition-colors">Match Previous Frame</button>
+            </div>
+        </div>
+        <textarea id="regen-notes" class="w-full bg-zinc-50 border border-zinc-200 focus:border-zinc-400 rounded-xl p-3 text-sm outline-none resize-none h-24 mb-3" placeholder="e.g. Make lighting cinematic, preserve actor face, widen camera angle..."></textarea>
+
+        <div class="mb-3">
+            <p class="text-xs font-bold uppercase tracking-wider text-zinc-500 mb-1.5">Continuity Reference Frame</p>
+            <div id="regen-continuity-drop" class="border-2 border-dashed border-zinc-200 rounded-xl p-2.5 flex items-center gap-2 min-h-[52px]">
+                <div id="regen-continuity-info" class="flex items-center gap-2 text-xs text-zinc-400"></div>
+                <button id="regen-continuity-clear" onclick="window.clearRegenContinuity()" class="hidden ml-auto text-zinc-400 hover:text-red-500 p-1"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 mb-4">
+            <span class="text-xs font-bold uppercase tracking-wider text-zinc-500">Variants</span>
+            <input type="hidden" id="regen-variants-value" value="1">
+            <button onclick="window.setRegenVariants(1)" class="rv-btn rv-active" data-v="1">1</button>
+            <button onclick="window.setRegenVariants(2)" class="rv-btn" data-v="2">2</button>
+            <button onclick="window.setRegenVariants(3)" class="rv-btn" data-v="3">3</button>
+        </div>
+
+        <div class="flex items-center justify-between gap-3">
+            <div class="flex gap-2">
+                <span id="regen-ratio-badge" class="px-2 py-1 bg-zinc-100 text-zinc-600 rounded font-mono text-[10px] font-bold">16:9</span>
+                <span id="regen-model-badge" class="px-2 py-1 bg-zinc-100 text-zinc-600 rounded text-[10px] font-bold">model</span>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.closeRegenerateModal()" class="px-4 py-2.5 text-zinc-600 hover:bg-zinc-100 rounded-xl font-semibold text-sm transition-colors">Cancel</button>
+                <button onclick="window.executeRegenerate()" class="px-5 py-2.5 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-sm flex items-center gap-2 transition-colors"><i data-lucide="sparkles" class="w-4 h-4 text-cine-lime"></i> Regenerate</button>
+            </div>
+        </div>
+        <input type="hidden" id="regen-card-id">
+        <input type="hidden" id="regen-multi-ids">
+    </div>
+</div>
+
+<!-- § MOVE MODAL -->
+<div id="move-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300" data-category="">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center">
+        <h3 class="text-base font-bold text-zinc-900 mb-2">Move Images to Reference</h3>
+        <p id="move-msg" class="text-xs text-zinc-600 mb-6"></p>
+        <div class="flex flex-col gap-2">
+            <button onclick="window.executeMove('fill')" class="px-4 py-2.5 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs transition-colors">Fill Empty Reference Slots</button>
+            <button onclick="window.executeMove('append')" class="px-4 py-2.5 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 rounded-xl font-semibold text-xs transition-colors">Append to End</button>
+            <button onclick="window.closeMoveModal()" class="px-4 py-2 text-zinc-500 hover:bg-zinc-100 rounded-xl font-semibold text-xs transition-colors">Cancel</button>
+        </div>
+    </div>
+</div>
+
+<!-- § PREFLIGHT MODAL -->
+<div id="preflight-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[70] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl max-h-[80vh] flex flex-col">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-bold text-zinc-900">Pre-flight Batch Diagnostics</h3>
+            <button onclick="window.closePreflight(false)" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div id="preflight-rows" class="flex-1 overflow-y-auto space-y-2 text-xs"></div>
+        <label class="flex items-center gap-2 text-xs text-zinc-600 mt-3 cursor-pointer">
+            <input type="checkbox" id="preflight-skip"> Don't show again this project
+        </label>
+        <div class="flex justify-end gap-3 mt-4">
+            <button onclick="window.closePreflight(false)" class="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl font-semibold text-xs transition-colors">Cancel</button>
+            <button onclick="window.closePreflight(true)" class="px-5 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs flex items-center gap-2 transition-colors"><i data-lucide="play" class="w-3.5 h-3.5 text-cine-lime"></i> Run Batch</button>
+        </div>
+    </div>
+</div>
+
+<!-- § CAST BUILDER MODAL -->
+<div id="cast-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[65] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-xl shadow-2xl max-h-[85vh] flex flex-col">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base font-bold text-zinc-900">Cast Roster Builder</h3>
+            <button onclick="window.closeCastBuilder()" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <p class="text-xs text-zinc-500 mb-2">Paste a character roster. Per line: <code class="bg-zinc-100 px-1 rounded">● Name / Role: description</code>, or <code class="bg-zinc-100 px-1 rounded">{Name} description</code>.</p>
+        <textarea id="cast-input" class="w-full h-40 bg-zinc-50 border border-zinc-200 focus:border-zinc-400 rounded-xl p-3 text-xs font-mono outline-none resize-none" placeholder="● Gregor MacGregor / Con Man: 1820s military general in Scottish uniform&#10;● Evelyn / Victorian Heiress: Young aristocratic woman in silk dress" oninput="window.previewCast()"></textarea>
+        <input type="text" id="cast-style" class="w-full mt-2 bg-lime-50 border border-lime-200 focus:border-lime-400 rounded-xl p-2.5 text-xs outline-none" placeholder="Optional cinematography style appended to every line (e.g. 35mm film, natural lighting, 8k)" oninput="window.previewCast()">
+        <div id="cast-preview" class="flex-1 overflow-y-auto mt-3 bg-zinc-50 border border-zinc-200 rounded-xl p-3 text-[11px] font-mono space-y-1 text-zinc-600"></div>
+        <div class="flex justify-end gap-2 mt-4">
+            <button onclick="window.closeCastBuilder()" class="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl font-semibold text-xs">Cancel</button>
+            <button onclick="window.applyCast('append')" class="px-4 py-2 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 rounded-xl font-semibold text-xs">Add to Batch</button>
+            <button onclick="window.applyCast('run')" class="px-4 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs flex items-center gap-1.5"><i data-lucide="play" class="w-3.5 h-3.5 text-cine-lime"></i> Run Cast</button>
+        </div>
+    </div>
+</div>
+
+<!-- § PROJECT MODAL -->
+<div id="project-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col overflow-hidden">
+        <div class="px-6 py-4 border-b border-zinc-100 flex justify-between items-center">
+            <h3 class="text-base font-bold text-zinc-900">Projects</h3>
+            <button onclick="window.closeProjectModal()" class="text-zinc-400 hover:text-zinc-900"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+        <div id="project-list" class="flex-1 overflow-y-auto p-4 space-y-2 bg-zinc-50"></div>
+        <div class="px-4 py-3 border-t border-zinc-100 flex gap-2">
+            <button onclick="window.newProject()" class="flex-1 px-3 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs transition-colors">＋ New</button>
+            <button onclick="window.exportProject()" class="flex-1 px-3 py-2 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 rounded-xl font-semibold text-xs transition-colors">⬇ Export</button>
+            <button onclick="window.importProject()" class="flex-1 px-3 py-2 bg-zinc-100 text-zinc-700 hover:bg-zinc-200 rounded-xl font-semibold text-xs transition-colors">⬆ Import</button>
+        </div>
+    </div>
+</div>
+
+<!-- § CONFIRM MODAL -->
+<div id="custom-confirm-modal" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-[80] hidden flex-col items-center justify-center opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl text-center">
+        <h3 class="text-base font-bold text-zinc-900 mb-2">Confirm Action</h3>
+        <p id="confirm-msg" class="text-xs text-zinc-600 mb-6"></p>
+        <div class="flex justify-center gap-3">
+            <button onclick="window._confirmResolve(false)" class="px-4 py-2 text-zinc-600 hover:bg-zinc-100 rounded-xl font-semibold text-xs transition-colors">Cancel</button>
+            <button onclick="window._confirmResolve(true)" class="px-5 py-2 bg-zinc-900 text-white hover:bg-zinc-800 rounded-xl font-semibold text-xs transition-colors">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed bottom-24 right-6 z-[90] flex flex-col gap-2 pointer-events-none"></div>
+
+<script type="module">
+// ==========================================
+// § APP CONFIG & PERSISTENCE
+// ==========================================
+let CLAUDE_API_KEY = localStorage.getItem('cineforge_claude_key') || '';
+let IMAGE_API_KEY = localStorage.getItem('cineforge_image_key') || '';
+
+window.openApiModal = () => {
+  document.getElementById('cfg-claude-key').value = CLAUDE_API_KEY;
+  document.getElementById('cfg-image-key').value = IMAGE_API_KEY;
+  const m = document.getElementById('api-modal');
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+};
+window.closeApiModal = () => {
+  const m = document.getElementById('api-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+};
+window.saveApiSettings = () => {
+  CLAUDE_API_KEY = document.getElementById('cfg-claude-key').value.trim();
+  IMAGE_API_KEY = document.getElementById('cfg-image-key').value.trim();
+  localStorage.setItem('cineforge_claude_key', CLAUDE_API_KEY);
+  localStorage.setItem('cineforge_image_key', IMAGE_API_KEY);
+  window.closeApiModal();
+  window.showToast('API Keys saved securely in browser storage.', 'success');
+};
+
+// ==========================================
+// § STATE
+// ==========================================
+const S = {
+  sessionId: crypto.randomUUID(), projectId: 'default',
+  mode: 'standard',
+  docs: new Map(), cardStatus: new Map(), selected: new Set(), pendingDelete: new Set(),
+  refs: { subject: [], scene: [], style: [] },
+  styleBible: '', continuityFrame: null,
+  autoAnchor: true, qaEnabled: true, seedLock: false, seed: null,
+  layout: 'grid-m', sort: 'order', filter: 'all',
+  ui: { leftOpen: true, rightOpen: false },
+  batch: { runId: null, total: 0, done: 0, failed: 0, retrying: 0, startedAt: 0, activeMs: 0, lastTick: 0, paused: false, stopped: false, durations: [] },
+  lightbox: { items: [], index: 0 },
+  pendingUploadSlot: null, dragRef: null,
+};
+let currentSingleTaskId = null;
+
+// ==========================================
+// UTILITIES
+// ==========================================
+window.escapeHTML = (str) => {
+  if (!str) return '';
+  return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag]));
+};
+
+window.showToast = (message, type = 'info', action = null) => {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  const colors = { success: 'bg-green-600 text-white', error: 'bg-red-600 text-white', info: 'bg-zinc-900 text-white', warning: 'bg-amber-500 text-zinc-950 font-bold' };
+  toast.className = `px-3.5 py-2.5 rounded-xl shadow-xl text-xs font-semibold animate-toast-in pointer-events-auto flex items-center gap-3 ${colors[type] || colors.info}`;
+  const span = document.createElement('span'); span.textContent = message; toast.appendChild(span);
+  if (action) {
+    const btn = document.createElement('button');
+    btn.textContent = action.label; btn.className = 'font-bold underline underline-offset-2 whitespace-nowrap';
+    btn.onclick = () => { action.onClick(); toast.remove(); };
+    toast.appendChild(btn);
+  }
+  container.appendChild(toast);
+  const life = action ? 8000 : 3500;
+  setTimeout(() => {
+    toast.style.opacity = '0'; toast.style.transform = 'translateY(10px)'; toast.style.transition = 'all 0.3s ease-in-out';
+    setTimeout(() => toast.remove(), 300);
+  }, life);
+};
+
+window.customConfirm = (message) => {
+  return new Promise((resolve) => {
+    document.getElementById('confirm-msg').textContent = message;
+    const modal = document.getElementById('custom-confirm-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => modal.classList.remove('opacity-0'), 10);
+    window._confirmResolve = (val) => {
+      modal.classList.add('opacity-0');
+      setTimeout(() => modal.classList.add('hidden'), 300);
+      resolve(val);
+    };
+  });
+};
+
+// ICONS CACHE
+const ICONS = {};
+const icon = (n, cls = 'w-4 h-4') => (ICONS[n] || '').replace('<svg', '<svg class="' + cls + '"');
+(function buildIcons() {
+  const names = ['copy','refresh-cw','maximize','minimize-2','maximize-2','user','clock','loader-2','alert-circle','square','check','x','pin','link','flag','sparkles','image','plus','grip-vertical','chevron-right','trash-2','rotate-ccw','clapperboard','play'];
+  const div = document.createElement('div');
+  div.style.cssText = 'position:absolute;left:-9999px;top:0;';
+  names.forEach(n => { const i = document.createElement('i'); i.setAttribute('data-lucide', n); div.appendChild(i); });
+  document.body.appendChild(div);
+  try { lucide.createIcons(); } catch (e) { console.warn('icons', e); }
+  Array.from(div.children).forEach((svg, idx) => { if (names[idx]) ICONS[names[idx]] = svg.outerHTML.replace(/\s*class="[^"]*"/, ''); });
+  div.remove();
+})();
+
+// ==========================================
+// § INDEXEDDB (Local Zero-Loss Storage)
+// ==========================================
+const IDB = (() => {
+  let dbp = null;
+  const open = () => dbp ||= new Promise((res, rej) => {
+    const r = indexedDB.open('cineforge_db', 2);
+    r.onupgradeneeded = () => {
+      const d = r.result;
+      if (!d.objectStoreNames.contains('images')) d.createObjectStore('images');
+      if (!d.objectStoreNames.contains('projects')) d.createObjectStore('projects');
+      if (!d.objectStoreNames.contains('kv')) d.createObjectStore('kv');
+    };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error);
+  });
+  const tx = async (store, mode, fn) => {
+    const d = await open();
+    return new Promise((res, rej) => {
+      const t = d.transaction(store, mode);
+      const rq = fn(t.objectStore(store));
+      t.oncomplete = () => res(rq?.result); t.onerror = () => rej(t.error);
+    });
+  };
+  return {
+    get: (s, k) => tx(s, 'readonly', o => o.get(k)),
+    put: (s, k, v) => tx(s, 'readwrite', o => o.put(v, k)),
+    del: (s, k) => tx(s, 'readwrite', o => o.delete(k)),
+    keys: (s) => tx(s, 'readonly', o => o.getAllKeys()),
+  };
+})();
+async function kvPut(k, v) { try { await IDB.put('kv', v, k); } catch (e) {} }
+async function kvGet(k) { try { return await IDB.get('kv', k); } catch (e) { return null; } }
+
+// ==========================================
+// BLOB HELPERS
+// ==========================================
+function b64ToBlob(b64, mime = 'image/jpeg') {
+  if (b64 && b64.includes(',')) b64 = b64.split(',')[1];
+  const bin = atob(b64); const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], { type: mime });
+}
+function blobToB64(blob) { return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1]); r.readAsDataURL(blob); }); }
+function dataUrlToBlob(dataUrl) { const [h, b64] = dataUrl.split(','); const mime = h.split(':')[1].split(';')[0]; return b64ToBlob(b64, mime); }
+function blobToDataUrl(blob) { return new Promise(res => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); }); }
+function canvasFallbackResize(blobOrDataUrl, maxW = 640, q = 0.8) {
+  return new Promise(async (resolve) => {
+    try {
+      const dataUrl = typeof blobOrDataUrl === 'string' ? blobOrDataUrl : await blobToDataUrl(blobOrDataUrl);
+      const img = new Image();
+      img.onload = () => {
+        const s = Math.min(1, maxW / img.width);
+        const c = document.createElement('canvas');
+        c.width = Math.max(1, Math.round(img.width * s)); c.height = Math.max(1, Math.round(img.height * s));
+        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+        c.toBlob(b => resolve(b || (typeof blobOrDataUrl === 'string' ? dataUrlToBlob(dataUrl) : blobOrDataUrl)), 'image/jpeg', q);
+      };
+      img.onerror = () => resolve(typeof blobOrDataUrl === 'string' ? dataUrlToBlob(dataUrl) : blobOrDataUrl);
+      img.src = dataUrl;
+    } catch (e) { resolve(blobOrDataUrl); }
+  });
+}
+function downloadBlob(blob, filename) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+
+// ==========================================
+// § IMAGE STORE
+// ==========================================
+const imageStore = {
+  full: new Map(), thumb: new Map(), _thumbJobs: new Map(),
+  async setFull(id, blob) { this.revoke(this.full.get(id)); this.full.set(id, { blob, url: URL.createObjectURL(blob) }); },
+  async makeThumb(id, maxW = 640) {
+    if (this.thumb.has(id)) return this.thumb.get(id);
+    if (this._thumbJobs.has(id)) return this._thumbJobs.get(id);
+    const job = this._makeThumb(id, maxW).finally(() => this._thumbJobs.delete(id));
+    this._thumbJobs.set(id, job);
+    return job;
+  },
+  async _makeThumb(id, maxW = 640) {
+    const src = this.full.get(id)?.blob; if (!src) return null;
+    let blob;
+    try {
+      const bmp = await createImageBitmap(src);
+      const s = Math.min(1, maxW / bmp.width);
+      const oc = new OffscreenCanvas(Math.round(bmp.width * s), Math.round(bmp.height * s));
+      oc.getContext('2d').drawImage(bmp, 0, 0, oc.width, oc.height); bmp.close();
+      blob = await oc.convertToBlob({ type: 'image/jpeg', quality: 0.8 });
+    } catch (e) { blob = await canvasFallbackResize(src, maxW, 0.8); }
+    if (!blob || !(blob instanceof Blob)) return null;
+    const b64 = await blobToB64(blob);
+    this.revoke(this.thumb.get(id));
+    this.thumb.set(id, { blob, url: URL.createObjectURL(blob), b64 });
+    return this.thumb.get(id);
+  },
+  thumbUrl(id, d) {
+    if (this.thumb.has(id)) return this.thumb.get(id).url;
+    const b64 = d?.thumbData || d?.imgData; if (!b64) return null;
+    const blob = b64ToBlob(b64.includes(',') ? b64.split(',')[1] : b64, 'image/jpeg');
+    this.thumb.set(id, { blob, url: URL.createObjectURL(blob), b64: b64.includes(',') ? b64.split(',')[1] : b64 });
+    return this.thumb.get(id).url;
+  },
+  async getFullBlob(id) {
+    if (this.full.has(id)) return this.full.get(id).blob;
+    try { const rec = await IDB.get('images', id); if (rec?.blob) { await this.setFull(id, rec.blob); return rec.blob; } } catch (e) {}
+    const d = S.docs.get(id); if (d?.imgData) return b64ToBlob(d.imgData.split(',')[1] || d.imgData, 'image/jpeg');
+    return this.thumb.get(id)?.blob || null;
+  },
+  async getFullUrl(id) { const b = await this.getFullBlob(id); if (!b) return null; if (!this.full.has(id)) await this.setFull(id, b); return this.full.get(id).url; },
+  revoke(e) { if (e?.url) URL.revokeObjectURL(e.url); },
+  drop(id) { this.revoke(this.full.get(id)); this.revoke(this.thumb.get(id)); this.full.delete(id); this.thumb.delete(id); }
+};
+async function refreshThumb(id) {
+  imageStore.revoke(imageStore.thumb.get(id));
+  imageStore.thumb.delete(id);
+  return imageStore.makeThumb(id);
+}
+
+// Local Session Persistence (replaces Firebase for clean standalone BYOK)
+function patchDoc(id, patch) {
+  const d = S.docs.get(id) || {};
+  Object.assign(d, patch);
+  S.docs.set(id, d);
+  saveSessionLocalDebounced();
+  return Promise.resolve();
+}
+let saveSessionTimer = null;
+function saveSessionLocalDebounced() {
+  clearTimeout(saveSessionTimer);
+  saveSessionTimer = setTimeout(async () => {
+    try {
+      const serializableDocs = [];
+      S.docs.forEach((d, k) => {
+        serializableDocs.push({ ...d, id: k });
+      });
+      await IDB.put('kv', serializableDocs, `session_${S.sessionId}`);
+    } catch (e) {}
+  }, 500);
+}
+
+// ==========================================
+// § TIMER WORKER (survives background tabs)
+// ==========================================
+let timerWorker = null;
+try {
+  timerWorker = new Worker(URL.createObjectURL(new Blob([`onmessage=e=>setTimeout(()=>postMessage(e.data.id),e.data.ms)`], { type: 'text/javascript' })));
+} catch (e) { timerWorker = null; }
+const timerWaiters = new Map(); let timerSeq = 0;
+if (timerWorker) {
+  timerWorker.onmessage = e => { const r = timerWaiters.get(e.data); if (r) { timerWaiters.delete(e.data); r(); } };
+}
+function sleep(ms, signal) {
+  return new Promise((res, rej) => {
+    const id = ++timerSeq;
+    let settled = false;
+    const onAbort = () => { if (settled) return; settled = true; if (timerWorker) timerWaiters.delete(id); rej(new DOMException('Aborted', 'AbortError')); };
+    const onFinish = () => { if (settled) return; settled = true; res(); };
+    if (timerWorker) { timerWaiters.set(id, onFinish); timerWorker.postMessage({ id, ms }); }
+    else setTimeout(onFinish, ms);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
+// ==========================================
+// § RATE GATE (AIMD)
+// ==========================================
+const gate = {
+  max: 4, limit: 4, active: 0, openAt: 0, streak: 0, spacingMs: 350, lastStart: 0, hits429: 0,
+  async acquire(signal) {
+    for (;;) {
+      if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+      const now = Date.now();
+      const wait = Math.max(this.openAt - now, this.lastStart + this.spacingMs - now);
+      if (this.active < this.limit && wait <= 0) { this.active++; this.lastStart = Date.now(); return; }
+      await sleep(Math.min(Math.max(wait, 60), 1000), signal);
+    }
+  },
+  release() { this.active = Math.max(0, this.active - 1); },
+  onThrottle(ms) { this.hits429++; this.streak = 0; this.limit = Math.max(1, this.limit - 1); this.openAt = Math.max(this.openAt, Date.now() + ms); renderBatchHealth(); },
+  onSuccess() { if (++this.streak >= 8) { this.streak = 0; if (this.limit < this.max) { this.limit++; renderBatchHealth(); } } },
+  setMax(n) { this.max = n; this.limit = Math.min(this.limit, n) || n; }
+};
+
+// ==========================================
+// § API ENGINE
+// ==========================================
+async function apiCall(model, method, body, signal, onStatus, opts = {}) {
+  const key = IMAGE_API_KEY || "";
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:${method}?key=${key}`;
+  const RETRY = new Set([408, 429, 500, 502, 503, 504, 529]);
+  for (let attempt = 0; ; attempt++) {
+    let res;
+    try {
+      res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
+    } catch (e) {
+      if (e.name === 'AbortError') throw e;
+      if (attempt >= 5) { e.fatal = true; throw e; }
+      const w = 1000 * 2 ** attempt + Math.random() * 800;
+      onStatus?.(`network · retry ${attempt + 1}`);
+      await sleep(w, signal); continue;
+    }
+    if (res.ok) return res.json();
+    const eb = await res.json().catch(() => ({}));
+    const msg = eb?.error?.message || `HTTP ${res.status}`;
+    if (!RETRY.has(res.status) || attempt >= 6) { const e = new Error(msg); e.status = res.status; e.fatal = true; throw e; }
+    const ra = parseFloat(res.headers.get('retry-after'));
+    const wait = (ra ? ra * 1000 : Math.min(60000, 1000 * 2 ** attempt)) + Math.random() * 1000;
+    if (res.status === 429 && !opts.noGate) gate.onThrottle(wait);
+    if (!opts.noGate) { S.batch.retrying++; renderBatchHealth(); }
+    onStatus?.(`${res.status === 429 ? 'rate limited' : 'server ' + res.status} · retry in ${Math.round(wait / 1000)}s`);
+    try { await sleep(wait, signal); } finally { if (!opts.noGate) S.batch.retrying = Math.max(0, S.batch.retrying - 1); }
+  }
+}
+
+// ==========================================
+// § PARSER
+// ==========================================
+function parseLine(raw) {
+  let s = (raw || '').trim();
+  const out = { prompt: '', context: '', timecode: '', characterName: '', chain: false, ratio: null, variants: 1, noScene: false, seed: null };
+  if (s.startsWith('>')) { out.chain = true; s = s.replace(/^>+\s*/, ''); }
+  const roster = s.match(/^[●•▪◦]\s*([^:]{1,80}):\s*(.*)$/);
+  if (roster) { out.characterName = roster[1].trim(); s = roster[2].trim(); }
+  s = s.replace(/\{([^}]+)\}/, (m, g) => { out.characterName = g.trim(); return ' '; });
+  s = s.replace(/(^|\s)@(\d+:\d+)(?=\s|$)/, (m, p, r) => { out.ratio = r; return p; });
+  s = s.replace(/(^|\s)x([2-4])(?=\s|$)/, (m, p, n) => { out.variants = +n; return p; });
+  s = s.replace(/(^|\s)!noscene(?=\s|$)/i, () => { out.noScene = true; return ' '; });
+  s = s.replace(/(^|\s)#(\d{1,10})(?=\s|$)/, (m, p, n) => { out.seed = +n; return p; });
+  const TC = /^\[?(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\]?\s*/;
+  if (S.mode === 'timestamp') { const m = s.match(TC); if (m) { out.timecode = m[1]; s = s.slice(m[0].length); } }
+  const tb = s.match(/^(.*?)\s*\[([^\]]+)\]\s*$/);
+  if (tb) {
+    const inner = tb[2].trim();
+    if (/^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?$/.test(inner)) { if (S.mode === 'timestamp' && !out.timecode) out.timecode = inner; s = tb[1]; }
+    else { out.context = inner; s = tb[1]; }
+  }
+  if (S.mode === 'timestamp') { const m2 = s.match(TC); if (m2 && !out.timecode) { out.timecode = m2[1]; s = s.slice(m2[0].length); } }
+  if (out.timecode) { const p = out.timecode.split(':'); if (p.length === 2) p.unshift('00'); out.timecode = p.map((x, i) => i < 2 ? x.padStart(2, '0') : x.padStart(2, '0')).join(':'); }
+  out.prompt = s.replace(/\s+/g, ' ').trim() || raw.trim();
+  return out;
+}
+
+function formatTimecodeFilename(timecode, format = 'hyphens', fallbackIndex = 1) {
+  if (!timecode) return `clip_${String(fallbackIndex).padStart(3, '0')}`;
+  const parts = timecode.split(':').map(p => p.trim());
+  const h = parts[0] || '00'; const m = parts[1] || '00'; const s = parts[2] || '00';
+  if (format === 'underscores') return `${h}_${m}_${s}`;
+  if (format === 'dots') return `${h}.${m}.${s}`;
+  if (format === 'seconds') return `${(parseInt(h, 10) * 3600) + (parseInt(m, 10) * 60) + parseInt(s, 10)}`;
+  return `${h}-${m}-${s}`;
+}
+
+// ==========================================
+// § MATCHING
+// ==========================================
+function normalizeText(str) {
+  return (str || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[‘’“”]/g, "'")
+    .replace(/[^a-z0-9\s/|,;:'-]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+function tokenizeAlias(alias) {
+  const norm = normalizeText(alias);
+  if (!norm) return [];
+  const tokens = norm.split(/\s+/).filter(Boolean);
+  const extra = [];
+  if (tokens.length >= 2) { extra.push(tokens[0]); extra.push(tokens[tokens.length - 1]); }
+  return [...new Set([...tokens, ...extra].filter(t => t.length > 1))];
+}
+function parseSubjectAliases(name) {
+  const raw = (name || '').trim();
+  if (!raw) return [];
+  const splitParts = raw.split(/[\/|;,]+/).map(s => s.trim()).filter(Boolean);
+  const aliases = new Set();
+  splitParts.forEach(part => {
+    const normalizedPart = normalizeText(part);
+    if (normalizedPart) aliases.add(normalizedPart);
+    tokenizeAlias(part).forEach(tok => aliases.add(tok));
+    const words = normalizedPart.split(' ').filter(Boolean);
+    if (words.length >= 2) { aliases.add(words.slice(0, 2).join(' ')); aliases.add(words.slice(-2).join(' ')); }
+  });
+  return Array.from(aliases).filter(Boolean);
+}
+function findMatchingSubjects(promptText, characterName = '') {
+  const promptNorm = normalizeText(promptText);
+  const charNorm = normalizeText(characterName);
+  const matches = [];
+  S.refs.subject.forEach((ref, index) => {
+    if (!ref.data) return;
+    const rawName = (ref.name || '').trim();
+    if (!rawName) return;
+    const scoreData = { index, ref, rawName, aliases: parseSubjectAliases(rawName), matchedAliases: [], score: 0, isNamed: true };
+    if (charNorm && normalizeText(rawName) === charNorm) { scoreData.score = 1000; scoreData.matchedAliases.push(rawName); }
+    if (scoreData.score < 1000) {
+      scoreData.aliases.forEach(alias => {
+        if (!alias) return;
+        if (promptNorm.includes(alias)) {
+          scoreData.score += alias.split(' ').length >= 2 ? 100 : 45;
+          scoreData.matchedAliases.push(alias); return;
+        }
+        const aliasTokens = alias.split(' ').filter(Boolean);
+        let tokenHits = 0;
+        aliasTokens.forEach(tok => { if (tok.length >= 3 && promptNorm.includes(tok)) tokenHits++; });
+        if (tokenHits > 0) { scoreData.score += tokenHits * 12; scoreData.matchedAliases.push(alias); }
+      });
+    }
+    if (scoreData.score >= 45) matches.push(scoreData);
+  });
+  return matches.sort((a, b) => b.score - a.score);
+}
+function unnamedSubjectFallback() {
+  return S.refs.subject
+    .map((ref, index) => ({ ref, index, score: 0, isNamed: false, rawName: '', matchedAliases: [] }))
+    .filter(m => m.ref.data && !(m.ref.name || '').trim())
+    .slice(0, 2);
+}
+function findMatchingScenes(promptText, context = '') {
+  const promptNorm = normalizeText(promptText);
+  const contextNorm = normalizeText(context);
+  const out = [];
+  S.refs.scene.forEach(ref => {
+    if (!ref.data) return;
+    const rawName = (ref.name || '').trim();
+    if (!rawName) { out.push(ref); return; }
+    const nameNorm = normalizeText(rawName);
+    const firstToken = rawName.split(/\s+/)[0];
+    const tokenNorm = normalizeText(firstToken || '');
+    if (
+      (contextNorm && nameNorm && contextNorm.includes(nameNorm)) ||
+      (tokenNorm && promptNorm && promptNorm.includes('@' + tokenNorm)) ||
+      (nameNorm && promptNorm.includes(nameNorm))
+    ) { out.push(ref); }
+  });
+  return out;
+}
+
+// ==========================================
+// § REFERENCES (Subject / Scene / Style)
+// ==========================================
+const newSlot = () => ({ id: crypto.randomUUID().slice(0, 9), data: null, mime: null, name: '', sheet: '', sheetStatus: null, prevData: null, prevMime: null, partCache: null, urlCache: null });
+
+function refPart(ref) {
+  if (!ref.partCache) ref.partCache = { inlineData: { mimeType: ref.mime || 'image/jpeg', data: ref.data } };
+  return ref.partCache;
+}
+function refDisplayUrl(ref) {
+  if (!ref.data) return null;
+  if (!ref.urlCache) { try { ref.urlCache = URL.createObjectURL(b64ToBlob(ref.data, ref.mime || 'image/jpeg')); } catch (e) { return null; } }
+  return ref.urlCache;
+}
+function invalidateSlotVisual(slot) {
+  slot.partCache = null;
+  if (slot.urlCache) { URL.revokeObjectURL(slot.urlCache); slot.urlCache = null; }
+}
+
+async function ingestRefImage(category, index, blobOrDataUrl, { name } = {}) {
+  const blob = typeof blobOrDataUrl === 'string' ? dataUrlToBlob(blobOrDataUrl) : blobOrDataUrl;
+  let small;
+  try { small = await canvasFallbackResize(blob, 1024, 0.85); } catch (e) { small = blob; }
+  if (!(small instanceof Blob)) small = blob;
+  const b64 = await blobToB64(small);
+  const slot = S.refs[category][index];
+  if (!slot) return;
+  invalidateSlotVisual(slot);
+  Object.assign(slot, { data: b64, mime: 'image/jpeg' });
+  if (name && !slot.name) slot.name = name;
+  renderSidebar(); saveProjectDebounced();
+  if (category === 'subject' && slot.name) describeCharacter(category, index);
+}
+
+async function describeCharacter(category, index) {
+  const ref = S.refs[category][index]; if (!ref || !ref.data) return;
+  if (ref.sheetStatus === 'working') return;
+  ref.sheetStatus = 'working'; renderSidebar();
+  try {
+    const text = `Describe this character for an illustrator who must redraw them identically in other scenes.\n≤45 words, one paragraph, no pose, no background, no camera notes. Cover: apparent age, gender presentation, skin tone, face shape, hair color and style, eye color, facial hair, distinguishing marks, default outfit with colors.\nOutput the description only.`;
+    const body = { contents: [{ role: 'user', parts: [{ text }, { inlineData: { mimeType: ref.mime || 'image/jpeg', data: ref.data } }] }] };
+    const data = await apiCall('gemini-3-flash-preview', 'generateContent', body, null, () => {}, { noGate: true });
+    const txt = (data.candidates?.[0]?.content?.parts || []).map(p => p.text || '').join('').trim();
+    if (txt) { ref.sheet = txt.slice(0, 600); ref.sheetStatus = 'done'; renderSidebar(); saveProjectDebounced(); }
+    else { ref.sheetStatus = 'none'; renderSidebar(); }
+  } catch (e) { console.warn('sheet', e); ref.sheetStatus = 'none'; renderSidebar(); }
+}
+window.refreshSheet = (category, index) => {
+  const ref = S.refs[category][index]; if (!ref || !ref.data) return;
+  ref.sheet = ''; ref.sheetStatus = null;
+  describeCharacter(category, index);
+};
+
+window.generateThreeView = async (category, index) => {
+  const ref = S.refs[category][index]; if (!ref || !ref.data) return;
+  const model = document.getElementById('model-select').value;
+  if (model === 'imagen-4.0-generate-001') { showToast('3-view needs a Gemini image model.', 'warning'); return; }
+  showToast('Generating 3-view reference sheet…', 'info');
+  const prompt = `Create a character reference sheet of the person in the attached image: three views side by side — front, three-quarter, profile — same neutral expression, same outfit, plain light-grey studio background, even soft lighting, full head and shoulders visible in each view. Preserve face, hair, skin tone, age and build exactly. No text or labels.`;
+  const body = { contents: [{ role: 'user', parts: [{ text: prompt }, refPart(ref)] }], generationConfig: { responseModalities: ['IMAGE'] } };
+  try {
+    const data = await apiCall(model, 'generateContent', body, null, () => {}, { noGate: true });
+    const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+    if (!part) throw new Error('no image returned');
+    ref.prevData = ref.data; ref.prevMime = ref.mime;
+    invalidateSlotVisual(ref);
+    ref.data = part.inlineData.data; ref.mime = part.inlineData.mimeType || 'image/png';
+    renderSidebar(); saveProjectDebounced();
+    showToast('3-view sheet generated. ↩ on the thumb to undo.', 'success');
+  } catch (e) { console.error('3view', e); showToast('3-view generation failed: ' + e.message, 'error'); }
+};
+window.undoThreeView = (category, index) => {
+  const ref = S.refs[category][index];
+  if (!ref || !ref.prevData) return;
+  const curData = ref.data, curMime = ref.mime;
+  ref.data = ref.prevData; ref.mime = ref.prevMime || 'image/jpeg';
+  ref.prevData = curData; ref.prevMime = curMime;
+  invalidateSlotVisual(ref);
+  renderSidebar(); saveProjectDebounced();
+};
+
+// SIDEBAR RENDERING
+function sheetStatusDot(ref) {
+  const cls = ref.sheetStatus === 'working' ? 'bg-amber-500 animate-pulse' : (ref.sheetStatus === 'done' ? 'bg-green-500' : 'bg-zinc-300');
+  return `<span class="w-2 h-2 rounded-full ${cls} shrink-0 mt-1.5" title="Character sheet: ${ref.sheetStatus || 'none'}"></span>`;
+}
+window.renderSidebar = () => {
+  const listContainer = document.getElementById('sidebar-lists');
+  listContainer.innerHTML = '';
+  const categories = [
+    { id: 'subject', title: 'Actor Likeness (Subjects)' },
+    { id: 'scene', title: 'Environments (Scenes)' },
+    { id: 'style', title: 'Aesthetics (Styles)' }
+  ];
+  categories.forEach(cat => {
+    const section = document.createElement('div');
+    section.className = 'space-y-3';
+    let html = `
+    <div class="flex justify-between items-center">
+        <label class="text-[11px] font-bold text-zinc-800 tracking-wider uppercase">${cat.title}</label>
+        <button onclick="window.addSlot('${cat.id}')" class="text-zinc-500 hover:text-zinc-900 text-xs font-semibold flex items-center gap-1 transition-colors">${icon('plus', 'w-3 h-3')} Add</button>
+    </div>`;
+    if (cat.id === 'subject') {
+      html += `
+      <div class="bg-zinc-50 border border-zinc-200 rounded-xl p-2.5 space-y-2">
+        <label class="block text-[10px] font-bold uppercase tracking-wider text-zinc-500">Paste Actor Names</label>
+        <textarea id="bulk-subject-names" class="w-full min-h-[58px] max-h-24 resize-none bg-transparent text-xs text-zinc-800 outline-none placeholder:text-zinc-400" placeholder="One per line, or comma-separated&#10;Gregor&#10;Evelyn"></textarea>
+        <button onclick="window.applyBulkSubjectNames()" class="w-full text-xs font-semibold bg-zinc-900 text-white rounded-lg py-1.5 hover:bg-zinc-800 transition">Apply Names</button>
+      </div>`;
+    }
+    html += `<div class="space-y-2" id="list-${cat.id}">`;
+    if (S.refs[cat.id].length === 0) {
+      html += `<div class="text-xs text-zinc-400 italic text-center py-2 bg-zinc-50 rounded-xl border border-zinc-200 border-dashed">No ${cat.title.toLowerCase()} added.</div>`;
+    } else {
+      S.refs[cat.id].forEach((ref, index) => {
+        const imgSrc = refDisplayUrl(ref);
+        html += `
+        <div class="flex gap-2 items-start group bg-white border border-zinc-200 rounded-xl p-1.5 transition-all shadow-sm"
+            draggable="true"
+            ondragstart="window.dragRefStart(event, '${cat.id}', ${index})"
+            ondragover="window.dragRefOver(event)"
+            ondrop="window.dropRef(event, '${cat.id}', ${index})"
+            ondragleave="window.dragRefLeave(event)">
+            <div class="cursor-grab opacity-30 hover:opacity-100 p-1 active:cursor-grabbing mt-1.5">${icon('grip-vertical')}</div>
+            <div class="w-12 h-12 shrink-0 bg-zinc-100 rounded-lg border border-zinc-200 flex items-center justify-center overflow-hidden relative cursor-pointer hover:bg-zinc-200 transition-colors mt-0.5"
+                onclick="window.triggerUpload('${cat.id}', ${index})"
+                ondragover="window.canvasDragOver(event)"
+                ondragleave="window.canvasDragLeave(event)"
+                ondrop="window.canvasDrop(event, '${cat.id}', ${index})">
+                ${imgSrc ? `<img src="${imgSrc}" class="w-full h-full object-cover">` : icon('plus', 'w-4 h-4 text-zinc-400')}
+                ${ref.prevData ? `<button onclick="event.stopPropagation();window.undoThreeView('${cat.id}', ${index})" title="Undo 3-view" class="absolute -top-1.5 -right-1.5 w-4 h-4 bg-zinc-900 text-white rounded-full text-[9px] font-bold leading-none">↩</button>` : ''}
+            </div>
+            <div class="flex-1 flex flex-col gap-1 min-w-0">
+                <div class="flex items-center gap-1.5">
+                    ${cat.id === 'subject' ? sheetStatusDot(ref) : ''}
+                    <input type="text" value="${window.escapeHTML(ref.name)}"
+                        placeholder="${cat.id === 'subject' ? 'Actor / Character Name...' : 'Notes / Environment...'}"
+                        class="flex-1 min-w-0 bg-transparent text-xs text-zinc-800 font-semibold outline-none px-1 py-0.5 placeholder:text-zinc-400"
+                        onchange="window.updateRefName('${cat.id}', ${index}, this.value)">
+                    ${cat.id === 'subject' ? `<button onclick="window.generateThreeView('${cat.id}', ${index})" title="Generate 3-view reference sheet" class="text-[9px] bg-zinc-900 text-white rounded px-1.5 py-0.5 font-bold hover:bg-zinc-800 shrink-0">⊞</button>` : ''}
+                    ${cat.id === 'subject' && ref.name ? `<button onclick="window.refreshSheet('${cat.id}', ${index})" title="Re-generate character sheet" class="text-zinc-400 hover:text-zinc-900 text-[10px] font-bold shrink-0">↻</button>` : ''}
+                </div>
+                ${cat.id === 'subject' ? `<textarea oninput="window.updateSheet(${index}, this.value)" class="w-full min-h-[28px] max-h-16 text-[10px] text-zinc-500 italic bg-zinc-50 border border-zinc-200 rounded-md p-1 outline-none resize-none focus:text-zinc-700" placeholder="Character likeness profile">${window.escapeHTML(ref.sheet || '')}</textarea>` : ''}
+                <textarea class="w-full min-h-[28px] max-h-12 text-[10px] text-zinc-400 italic bg-zinc-50 border border-zinc-200 rounded-md p-1 outline-none resize-none focus:text-zinc-600 focus:border-zinc-300 transition-colors" placeholder="Paste image here (Ctrl+V)" onpaste="window.handleRefPaste(event, '${cat.id}', ${index})"></textarea>
+            </div>
+            <button onclick="window.removeSlot('${cat.id}', ${index})" class="text-zinc-400 hover:text-red-500 p-1.5 transition-colors mt-0.5">${icon('x')}</button>
+        </div>`;
+      });
+    }
+    html += `</div>`;
+    section.innerHTML = html;
+    listContainer.appendChild(section);
+  });
+};
+
+window.updateSheet = (index, val) => { const ref = S.refs.subject[index]; if (ref) { ref.sheet = val; saveProjectDebounced(); } };
+window.updateRefName = (category, index, val) => {
+  const ref = S.refs[category][index]; if (!ref) return;
+  ref.name = val;
+  saveProjectDebounced();
+  if (category === 'subject' && ref.data && val.trim() && !ref.sheet) describeCharacter(category, index);
+};
+window.handleRefPaste = (e, category, index) => {
+  const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+  for (const i in items) {
+    const item = items[i];
+    if (item.type && item.type.indexOf('image') !== -1) {
+      e.preventDefault();
+      const file = item.getAsFile();
+      ingestRefImage(category, index, file, {}).then(() => showToast('Image pasted into reference!', 'success'));
+      break;
+    }
+  }
+};
+window.addSlot = (category) => { S.refs[category].push(newSlot()); renderSidebar(); saveProjectDebounced(); };
+window.removeSlot = (category, index) => {
+  const ref = S.refs[category][index];
+  if (ref?.urlCache) URL.revokeObjectURL(ref.urlCache);
+  S.refs[category].splice(index, 1); renderSidebar(); saveProjectDebounced();
+};
+
+let draggedRefIndex = null, draggedRefCategory = null;
+window.dragRefStart = (e, category, index) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON' || e.target.tagName === 'TEXTAREA' || e.target.closest('textarea')) { e.preventDefault(); return; }
+  draggedRefIndex = index; draggedRefCategory = category;
+  e.currentTarget.classList.add('ref-item-dragging');
+};
+window.dragRefOver = (e) => { e.preventDefault(); };
+window.dragRefLeave = (e) => { e.preventDefault(); };
+window.dropRef = (e, category, dropIndex) => {
+  e.preventDefault();
+  document.querySelectorAll('.ref-item-dragging').forEach(el => el.classList.remove('ref-item-dragging'));
+  if (draggedRefCategory !== category || draggedRefIndex === null) return;
+  if (draggedRefIndex === dropIndex) return;
+  const list = S.refs[category];
+  const [movedItem] = list.splice(draggedRefIndex, 1);
+  list.splice(dropIndex, 0, movedItem);
+  renderSidebar(); saveProjectDebounced();
+  draggedRefIndex = null; draggedRefCategory = null;
+};
+
+window.canvasDragStart = (e, id) => {
+  e.dataTransfer.setData('application/x-cineforge-card', id);
+  e.dataTransfer.effectAllowed = 'copy';
+};
+window.canvasDragOver = (e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.add('slot-drag-over'); };
+window.canvasDragLeave = (e) => { e.preventDefault(); e.stopPropagation(); e.currentTarget.classList.remove('slot-drag-over'); };
+window.canvasDrop = async (e, category, index) => {
+  e.preventDefault(); e.stopPropagation();
+  e.currentTarget.classList.remove('slot-drag-over');
+  const cardId = e.dataTransfer.getData('application/x-cineforge-card');
+  if (cardId) {
+    const blob = await imageStore.getFullBlob(cardId);
+    if (blob) {
+      const d = S.docs.get(cardId);
+      const name = (category === 'subject' && d?.characterName) ? d.characterName : undefined;
+      await ingestRefImage(category, index, blob, { name });
+      showToast('Reference captured from canvas.', 'success');
+    }
+    return;
+  }
+  const imgSrc = e.dataTransfer.getData('text/plain');
+  if (imgSrc && imgSrc.startsWith('data:')) { await ingestRefImage(category, index, imgSrc, {}); showToast('Reference dropped.', 'success'); }
+};
+
+window.triggerUpload = (category, index) => { S.pendingUploadSlot = { category, index }; document.getElementById('file-upload').click(); };
+window.triggerQuickUpload = () => {
+  let target = null;
+  ['subject', 'scene', 'style'].forEach(cat => {
+    if (target) return;
+    const emptyIdx = S.refs[cat].findIndex(r => !r.data);
+    if (emptyIdx !== -1) target = { category: cat, index: emptyIdx };
+  });
+  if (!target) { window.addSlot('subject'); target = { category: 'subject', index: S.refs.subject.length - 1 }; }
+  window.triggerUpload(target.category, target.index);
+  document.getElementById('left-sidebar').classList.remove('sidebar-left-closed');
+};
+window.handleFileSelect = (e) => {
+  const file = e.target.files[0];
+  if (!file || !S.pendingUploadSlot) return;
+  const { category, index } = S.pendingUploadSlot;
+  S.pendingUploadSlot = null;
+  ingestRefImage(category, index, file, {}).then(() => showToast('Reference added.', 'success'));
+  e.target.value = '';
+};
+window.applyBulkSubjectNames = () => {
+  const el = document.getElementById('bulk-subject-names');
+  if (!el) return;
+  const raw = el.value.trim();
+  if (!raw) return;
+  const names = raw.split(/\n|,/).map(n => n.trim()).filter(Boolean);
+  if (names.length === 0) return;
+  while (S.refs.subject.length < names.length) S.refs.subject.push(newSlot());
+  names.forEach((name, index) => { S.refs.subject[index].name = name; });
+  renderSidebar(); saveProjectDebounced();
+  S.refs.subject.forEach((r, i) => { if (r.data && r.name && !r.sheet) describeCharacter('subject', i); });
+  showToast('Bulk names applied successfully!', 'success');
+};
+
+// ==========================================
+// § PAYLOAD BUILDER
+// ==========================================
+const SYSTEM_RULES = (ratio, bible) => `You are rendering ONE frame of a storyboard. Output exactly one image, aspect ratio ${ratio}.
+IDENTITY LOCK: Each CHARACTER block below is a specific named person. If the SHOT names that character, reproduce their face, hair, skin tone, age, build and default wardrobe from the attached image and description exactly. Never substitute a generic person, never blend two characters, never change ethnicity or age. Characters not named in the SHOT must not appear. Background figures are anonymous and must not resemble any reference.
+SCENE images define environment, layout and framing only. STYLE images define medium, palette, lighting and finish only. Neither may alter a character's identity.
+CONTINUITY FRAME (if attached) is the previous shot of the same sequence: keep set dressing, furniture and prop placement, wardrobe, lighting direction, color temperature, time of day and lens identical; change only what the SHOT describes.
+ANCHOR FRAME (if attached) is an approved shot from the same scene: match its rendering style, palette, lighting and environment.
+ ${bible ? `PROJECT STYLE: ${bible}\n` : ''}No text, captions, watermarks, borders or split panels.`;
+
+async function buildParts(task) {
+  const parts = [{ text: SYSTEM_RULES(task.ratio, S.styleBible) }];
+  const subs = findMatchingSubjects(task.prompt, task.characterName);
+  const useSubs = subs.length ? subs : unnamedSubjectFallback();
+  useSubs.forEach(m => {
+    parts.push({ text: `CHARACTER "${m.ref.name || 'unnamed'}"${m.ref.sheet ? ` — ${m.ref.sheet}` : ''}` });
+    parts.push(refPart(m.ref));
+  });
+  const sceneRefs = [];
+  if (!task.noScene) {
+    findMatchingScenes(task.prompt, task.context).forEach(r => {
+      sceneRefs.push(r.name || '');
+      parts.push({ text: `SCENE${r.name ? ` "${r.name}"` : ''} — environment, layout and framing only.` });
+      parts.push(refPart(r));
+    });
+  }
+  S.refs.style.filter(r => r.data).forEach(r => {
+    parts.push({ text: `STYLE${r.name ? ` — ${r.name}` : ''} — medium, palette, lighting, finish only.` });
+    parts.push(refPart(r));
+  });
+  if (task.continuityFrom) {
+    const p = await framePart(task.continuityFrom);
+    if (p) { parts.push({ text: 'CONTINUITY FRAME — the immediately preceding shot.' }); parts.push(p); }
+  } else if (S.autoAnchor && task.context && !task.isAnchorSource) {
+    const a = anchorFor(task.context);
+    if (a) { const p = await framePart(a.id); if (p) { parts.push({ text: `ANCHOR FRAME — approved shot from "${task.context}".` }); parts.push(p); } }
+  }
+  parts.push({ text: `SHOT: ${task.prompt}${task.notes ? `. ADJUSTMENTS: ${task.notes}` : ''}. Aspect ratio ${task.ratio}.` });
+  task.meta = { subjectRefs: useSubs.map(m => m.ref.name || ''), sceneRefs };
+  return parts;
+}
+
+async function framePart(id) {
+  let thumb = imageStore.thumb.get(id);
+  if (!thumb) { const d = S.docs.get(id); if (imageStore.thumbUrl(id, d)) thumb = imageStore.thumb.get(id); }
+  if (!thumb && imageStore.full.has(id)) thumb = await imageStore.makeThumb(id);
+  return thumb ? { inlineData: { mimeType: 'image/jpeg', data: thumb.b64 } } : null;
+}
+function anchorFor(context) {
+  const ctx = normalizeText(context);
+  if (!ctx) return null;
+  let anchorDoc = null, approvedDoc = null;
+  [...S.docs.values()]
+    .filter(d => d.status === 'success' && normalizeText(d.context) === ctx)
+    .sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0))
+    .forEach(d => {
+      if (d.anchor && !anchorDoc) anchorDoc = d;
+      if (d.approved && !approvedDoc) approvedDoc = d;
+    });
+  return anchorDoc || approvedDoc || null;
+}
+
+async function callImageAPI(task, signal, onStatus) {
+  if (task.model === 'imagen-4.0-generate-001') {
+    const data = await apiCall(task.model, 'predict', { instances: { prompt: task.prompt + (task.notes ? '. ' + task.notes : '') }, parameters: { sampleCount: 1, aspectRatio: task.ratio } }, signal, onStatus);
+    return b64ToBlob(data.predictions[0].bytesBase64Encoded, 'image/png');
+  }
+  const parts = await buildParts(task);
+  const body = { contents: [{ role: 'user', parts }], generationConfig: { responseModalities: ['IMAGE'] } };
+  if (task.seed != null) body.generationConfig.seed = task.seed;
+  let data;
+  try {
+    data = await apiCall(task.model, 'generateContent', body, signal, onStatus);
+  } catch (e) {
+    if (e.status === 400 && /seed/i.test(String(e.message || '')) && body.generationConfig.seed != null) {
+      delete body.generationConfig.seed;
+      data = await apiCall(task.model, 'generateContent', body, signal, onStatus);
+    } else throw e;
+  }
+  const part = data.candidates?.[0]?.content?.parts?.find(p => p.inlineData);
+  if (!part) {
+    const reason = data.candidates?.[0]?.finishReason || data.promptFeedback?.blockReason || 'no image';
+    const e = new Error(`No image (${reason})`); e.fatal = true; throw e;
+  }
+  return b64ToBlob(part.inlineData.data, part.inlineData.mimeType || 'image/png');
+}
+
+// ==========================================
+// § TASK ENGINE
+// ==========================================
+const engine = {
+  tasks: new Map(), queue: [], running: 0,
+  add(t) {
+    t.status = 'queued'; this.tasks.set(t.id, t); this.queue.push(t);
+    this.queue.sort((a, b) => a.priority - b.priority || (a.orderIndex || 0) - (b.orderIndex || 0));
+    this.pump();
+  },
+  ready(t) {
+    if (!t.dependsOn) return true;
+    const d = this.tasks.get(t.dependsOn);
+    if (!d) return S.docs.get(t.dependsOn)?.status === 'success';
+    return d.status === 'done';
+  },
+  blocked(t) { const d = this.tasks.get(t.dependsOn); return d && (d.status === 'failed' || d.status === 'stopped'); },
+  pump() {
+    if (S.batch.paused) return;
+    for (let i = 0; i < this.queue.length && this.running < gate.limit;) {
+      const t = this.queue[i];
+      if (this.blocked(t)) { this.queue.splice(i, 1); this.fail(t, new Error('previous frame in chain failed')); continue; }
+      if (!this.ready(t)) { i++; continue; }
+      this.queue.splice(i, 1); this.run(t);
+    }
+    if (!this.queue.length && !this.running && S.batch.runId) finishBatch(false);
+  },
+  async run(t) {
+    t.status = 'running'; this.running++;
+    t.controller = new AbortController(); t.startedAt = Date.now();
+    setCardStatus(t.id, 'loading'); setCardPill(t.id, 'queued → running');
+    try {
+      await gate.acquire(t.controller.signal);
+      let blob;
+      try { blob = await callImageAPI(t, t.controller.signal, msg => setCardPill(t.id, msg)); }
+      finally { gate.release(); }
+      gate.onSuccess();
+      await imageStore.setFull(t.id, blob);
+      await refreshThumb(t.id);
+      t.status = 'done';
+      S.batch.durations.push(Date.now() - t.startedAt);
+      if (S.batch.durations.length > 10) S.batch.durations.shift();
+      setCardStatus(t.id, 'success'); setCardPill(t.id, '');
+      await persistSuccess(t);
+      if (S.qaEnabled && t.model !== 'imagen-4.0-generate-001') qa.enqueue(t.id, t.meta?.subjectRefs || []);
+    } catch (e) {
+      if (e.name === 'AbortError') {
+        t.status = 'stopped'; setCardStatus(t.id, 'stopped');
+        patchDoc(t.id, { status: 'stopped' });
+      } else this.fail(t, e);
+    } finally {
+      this.running--;
+      if (t.runId && t.runId === S.batch.runId) {
+        S.batch.done++; if (t.status === 'failed') S.batch.failed++;
+        renderBatchProgress();
+      }
+      if (!t.runId && currentSingleTaskId === t.id) { currentSingleTaskId = null; showSingleGenerationState(false); }
+      this.pump();
+    }
+  },
+  fail(t, e) {
+    t.status = 'failed'; console.error('task', t.id, e);
+    setCardStatus(t.id, 'error', { errorMsg: e.message });
+    patchDoc(t.id, { status: 'error', errorMsg: String(e.message).slice(0, 300) });
+  },
+  stopRun(runId) {
+    this.queue = this.queue.filter(t => {
+      if (t.runId === runId) { t.status = 'stopped'; setCardStatus(t.id, 'stopped'); patchDoc(t.id, { status: 'stopped' }); return false; }
+      return true;
+    });
+    this.tasks.forEach(t => { if (t.runId === runId && t.status === 'running') t.controller.abort(); });
+  },
+  stopOne(id) {
+    const t = this.tasks.get(id); if (!t) return;
+    if (t.status === 'running') t.controller.abort();
+    else { this.queue = this.queue.filter(x => x !== t); t.status = 'stopped'; setCardStatus(id, 'stopped'); }
+  }
+};
+
+function docInitData(t) {
+  return {
+    sessionId: S.sessionId, projectId: S.projectId,
+    basePrompt: t.basePrompt, notes: t.notes || '', prompt: t.prompt,
+    context: t.context || '', timecode: t.timecode || '', characterName: t.characterName || '',
+    model: t.model, aspectRatio: t.ratio, status: 'loading', errorMsg: null,
+    thumbData: null, hasFull: false, orderIndex: t.orderIndex, createdAt: Date.now(),
+    approved: false, rejected: false, anchor: false, variantOf: t.variantOf || null, continuityFrom: t.continuityFrom || null,
+    qa: null, seed: t.seed ?? null, sceneRefs: [], subjectRefs: []
+  };
+}
+async function persistSuccess(t) {
+  const thumb = await imageStore.makeThumb(t.id);
+  const blob = imageStore.full.get(t.id)?.blob;
+  if (blob) { try { await IDB.put('images', t.id, { blob, mime: blob.type }); } catch (e) {} }
+  await patchDoc(t.id, {
+    status: 'success', thumbData: thumb ? thumb.b64 : null, hasFull: !!blob,
+    prompt: t.prompt, notes: t.notes || '', basePrompt: t.basePrompt, seed: t.seed ?? null,
+    subjectRefs: t.meta?.subjectRefs || [], sceneRefs: t.meta?.sceneRefs || [],
+    continuityFrom: t.continuityFrom || null, model: t.model, aspectRatio: t.ratio,
+    context: t.context || '', timecode: t.timecode || '', characterName: t.characterName || ''
+  });
+}
+
+// ==========================================
+// § BATCH RUNNER
+// ==========================================
+let batchTimerInterval = null;
+function startBatchTimer() {
+  if (batchTimerInterval) clearInterval(batchTimerInterval);
+  S.batch.lastTick = Date.now();
+  document.getElementById('batch-timer').textContent = '00:00';
+  document.getElementById('batch-progress').style.width = '0%';
+  batchTimerInterval = setInterval(() => {
+    if (S.batch.runId && !S.batch.paused) {
+      const now = Date.now();
+      S.batch.activeMs += now - S.batch.lastTick; S.batch.lastTick = now;
+      const elapsedSec = Math.floor(S.batch.activeMs / 1000);
+      document.getElementById('batch-timer').textContent = `${String(Math.floor(elapsedSec / 60)).padStart(2, '0')}:${String(elapsedSec % 60).padStart(2, '0')}`;
+      renderBatchHealth();
+    } else if (S.batch.runId) { S.batch.lastTick = Date.now(); }
+  }, 1000);
+}
+
+function finishBatch(stopped) {
+  if (batchTimerInterval) { clearInterval(batchTimerInterval); batchTimerInterval = null; }
+  const b = S.batch;
+  const elapsedSec = Math.max(1, Math.floor(b.activeMs / 1000));
+  const ipm = ((b.total / elapsedSec) * 60).toFixed(1);
+  document.getElementById('batch-timer').textContent = `${String(Math.floor(elapsedSec / 60)).padStart(2, '0')}:${String(elapsedSec % 60).padStart(2, '0')} — ${ipm} img/min${stopped ? ' (Stopped)' : ''}`;
+  const flagged = [...S.docs.values()].filter(d => d.qa && d.qa.verdict !== 'pass').length;
+  showToast(`Batch completed${stopped ? ' (Stopped)' : ''} · ${Math.max(0, b.done - b.failed)} ok · ${b.failed} failed · ${flagged} flagged`, b.failed > 0 ? 'warning' : 'success');
+  b.runId = null; b.paused = false; b.stopped = false;
+  updateBatchButtons();
+  document.getElementById('batch-counter').textContent = `Completed ${b.total}`;
+  if (b.failed > 0) document.getElementById('btn-retry-failed').classList.remove('hidden');
+}
+
+function renderBatchProgress() {
+  if (!S.batch.runId) return;
+  document.getElementById('batch-progress').style.width = `${(S.batch.done / Math.max(1, S.batch.total)) * 100}%`;
+  document.getElementById('batch-counter').textContent = `${S.batch.done} / ${S.batch.total} processed`;
+  renderBatchHealth();
+}
+function renderBatchHealth() {
+  const el = document.getElementById('batch-health');
+  if (!el) return;
+  if (!S.batch.runId) { el.classList.add('hidden'); return; }
+  el.classList.remove('hidden');
+  const b = S.batch;
+  const remaining = Math.max(0, b.total - b.done);
+  const mean = b.durations.length ? b.durations.reduce((a, c) => a + c, 0) / b.durations.length : 0;
+  const eta = mean ? Math.round(mean / Math.max(1, gate.limit) * remaining) : null;
+  const etaStr = eta != null ? `~${Math.floor(eta / 60)}m ${eta % 60}s` : '—';
+  el.textContent = `${b.done}/${b.total} · ${etaStr} left · parallel ${gate.active}/${gate.limit} · ${b.failed} failed`;
+}
+
+function updateBatchButtons() {
+  const runBtn = document.getElementById('btn-batch');
+  const pauseBtn = document.getElementById('btn-pause-batch');
+  const resumeBtn = document.getElementById('btn-resume-batch');
+  const stopBtn = document.getElementById('btn-stop-batch');
+  if (!S.batch.runId) {
+    runBtn.classList.remove('hidden'); pauseBtn.classList.add('hidden'); resumeBtn.classList.add('hidden'); stopBtn.classList.add('hidden');
+  } else {
+    runBtn.classList.add('hidden'); stopBtn.classList.remove('hidden');
+    if (S.batch.paused) { pauseBtn.classList.add('hidden'); resumeBtn.classList.remove('hidden'); }
+    else { pauseBtn.classList.remove('hidden'); resumeBtn.classList.add('hidden'); }
+  }
+}
+
+window.updateBatchCount = (fromInput = false) => {
+  const lines = document.getElementById('batch-input').value.split('\n').filter(l => l.trim() !== '');
+  const count = lines.length;
+  const statsDiv = document.getElementById('batch-stats');
+  const counterSpan = document.getElementById('batch-counter');
+  const progressBar = document.getElementById('batch-progress');
+  if (count > 0 || S.batch.runId) {
+    statsDiv.classList.remove('hidden');
+    if (!S.batch.runId) {
+      counterSpan.textContent = `${count} image${count !== 1 ? 's' : ''} queued`;
+      if (fromInput) {
+        document.getElementById('batch-timer').textContent = '00:00';
+        progressBar.style.width = '0%';
+        document.getElementById('batch-health').classList.add('hidden');
+      }
+    }
+  } else { statsDiv.classList.add('hidden'); }
+  saveProjectDebounced();
+};
+
+window.runBatch = async () => {
+  if (S.batch.runId) { showToast('Batch already running.', 'warning'); return; }
+  const rawLines = document.getElementById('batch-input').value.split('\n').map(l => l.trim()).filter(l => l);
+  if (rawLines.length === 0) return;
+
+  const okToRun = await window.runPreflight(rawLines);
+  if (!okToRun) return;
+
+  const runId = crypto.randomUUID();
+  S.batch = { runId, total: 0, done: 0, failed: 0, retrying: 0, startedAt: Date.now(), activeMs: 0, lastTick: Date.now(), paused: false, stopped: false, durations: [] };
+  gate.setMax(parseInt(document.getElementById('batch-concurrency').value) || 4);
+  gate.hits429 = 0;
+  if (S.seedLock && S.seed == null) { S.seed = Math.floor(Math.random() * 2147483646) + 1; }
+  if (S.seedLock) { const si = document.getElementById('seed-value'); if (si) si.value = S.seed; }
+
+  let ratio = document.getElementById('aspect-ratio').value;
+  if (ratio === 'custom') ratio = document.getElementById('custom-ratio-input').value.trim() || '16:9';
+  const model = document.getElementById('model-select').value;
+
+  const parsed = rawLines.map(l => parseLine(l));
+  let total = 0; parsed.forEach(p => total += Math.max(1, Math.min(4, p.variants || 1)));
+  S.batch.total = total;
+
+  const base = Date.now();
+  const tasks = [];
+  let prevTaskId = null;
+  let firstCardId = null;
+  const container = document.getElementById('canvas-container');
+  if (total > 20) container.classList.add('no-anim');
+
+  parsed.forEach((line, i) => {
+    const n = Math.max(1, Math.min(4, line.variants || 1));
+    let parentId = null;
+    for (let k = 0; k < n; k++) {
+      const id = crypto.randomUUID();
+      if (i === 0 && k === 0) firstCardId = id;
+      const task = {
+        id, kind: 'generate', runId, priority: 1, orderIndex: base + i + k * 0.001,
+        basePrompt: line.prompt, notes: '', prompt: line.prompt,
+        context: line.context, timecode: line.timecode, characterName: line.characterName,
+        ratio: line.ratio || ratio, model, noScene: !!line.noScene,
+        seed: S.seedLock ? S.seed : (line.seed ?? null),
+        dependsOn: line.chain ? prevTaskId : null,
+        continuityFrom: line.chain ? prevTaskId : (S.continuityFrame?.id || null),
+        variantOf: (k > 0) ? parentId : null,
+        isAnchorSource: false
+      };
+      if (k === 0) parentId = id;
+      const initData = docInitData(task);
+      S.docs.set(id, initData);
+      renderCard({ id, ...initData }, { skipScroll: true });
+      tasks.push(task);
+    }
+    prevTaskId = parentId;
+  });
+
+  tasks.forEach(t => engine.add(t));
+  updateBatchButtons();
+  document.getElementById('batch-stats').classList.remove('hidden');
+  startBatchTimer();
+  renderBatchHealth();
+  if (firstCardId) document.getElementById(`card-${firstCardId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  setTimeout(() => container.classList.remove('no-anim'), 300);
+  showToast(`CineBatch launched · ${total} shots queued`, 'info');
+};
+
+window.pauseBatch = () => { if (!S.batch.runId) return; S.batch.paused = true; S.batch.lastTick = Date.now(); updateBatchButtons(); showToast('Batch paused.', 'info'); };
+window.resumeBatch = () => { if (!S.batch.runId) return; S.batch.paused = false; S.batch.lastTick = Date.now(); updateBatchButtons(); engine.pump(); };
+window.stopBatch = () => { if (!S.batch.runId) return; engine.stopRun(S.batch.runId); finishBatch(true); showToast('Batch aborted.', 'warning'); };
+
+// SINGLE GENERATE
+function showSingleGenerationState(isRunning) {
+  document.getElementById('btn-generate').classList.toggle('hidden', isRunning);
+  document.getElementById('btn-stop-generate').classList.toggle('hidden', !isRunning);
+}
+window.generateSingle = async () => {
+  const inputEl = document.getElementById('main-prompt');
+  const raw = inputEl.value.trim();
+  if (!raw) return;
+  const line = parseLine(raw);
+  if (!line.prompt) return;
+
+  let ratio = document.getElementById('aspect-ratio').value;
+  if (ratio === 'custom') ratio = document.getElementById('custom-ratio-input').value.trim() || '16:9';
+  const model = document.getElementById('model-select').value;
+  inputEl.value = ''; window.autoGrow(inputEl);
+
+  const id = crypto.randomUUID();
+  const task = {
+    id, kind: 'generate', runId: null, priority: 0, orderIndex: Date.now(),
+    basePrompt: line.prompt, notes: '', prompt: line.prompt,
+    context: line.context, timecode: line.timecode, characterName: line.characterName,
+    ratio: line.ratio || ratio, model, noScene: !!line.noScene,
+    seed: S.seedLock ? S.seed : (line.seed ?? null),
+    dependsOn: null, continuityFrom: S.continuityFrame?.id || null, variantOf: null, isAnchorSource: false
+  };
+  const initData = docInitData(task);
+  S.docs.set(id, initData);
+  renderCard({ id, ...initData }, { skipScroll: false });
+  engine.add(task);
+  currentSingleTaskId = id;
+  showSingleGenerationState(true);
+};
+window.stopGeneration = () => {
+  if (currentSingleTaskId) { engine.stopOne(currentSingleTaskId); showToast('Generation stopped.', 'warning'); }
+  currentSingleTaskId = null;
+  showSingleGenerationState(false);
+};
+
+// REGENERATE & VARIANTS
+async function regenerateCard(id, { notes = '', replacePrompt = null, variants = 1, continuityFrom = undefined, priority = 0, runId = null } = {}) {
+  const d = S.docs.get(id); if (!d) return;
+  const basePrompt = replacePrompt ?? (d.basePrompt || d.prompt);
+  const isReplace = replacePrompt != null;
+  const model = document.getElementById('model-select').value;
+  const ratio = d.aspectRatio || '16:9';
+  const cf = continuityFrom !== undefined ? continuityFrom : (d.continuityFrom || null);
+  const noteVal = isReplace ? '' : (notes || '');
+  const fullPrompt = noteVal ? `${basePrompt}. ${noteVal}` : basePrompt;
+  const seed = S.seedLock ? S.seed : (d.seed != null ? d.seed + 1 : null);
+
+  if (variants > 1) {
+    const tasks = [];
+    for (let k = 0; k < variants; k++) {
+      const nid = crypto.randomUUID();
+      const task = {
+        id: nid, kind: 'variant', runId, priority, orderIndex: (d.orderIndex || Date.now()) + 0.001 + k * 0.001,
+        basePrompt, notes: noteVal, prompt: fullPrompt, context: d.context || '', timecode: d.timecode || '', characterName: d.characterName || '',
+        ratio, model, noScene: false, seed, dependsOn: null, continuityFrom: cf, variantOf: id, isAnchorSource: false
+      };
+      const initData = docInitData(task);
+      S.docs.set(nid, initData);
+      renderCard({ id: nid, ...initData }, { skipScroll: false });
+      tasks.push(task);
+    }
+    tasks.forEach(t => engine.add(t));
+    return tasks[0].id;
+  } else {
+    const task = {
+      id, kind: 'regenerate', runId, priority, orderIndex: d.orderIndex || Date.now(),
+      basePrompt, notes: noteVal, prompt: fullPrompt, context: d.context || '', timecode: d.timecode || '', characterName: d.characterName || '',
+      ratio, model, noScene: false, seed, dependsOn: null, continuityFrom: cf, variantOf: d.variantOf || null, isAnchorSource: !!d.anchor
+    };
+    setCardStatus(id, 'loading'); setCardPill(id, 'queued');
+    patchDoc(id, { status: 'loading', qa: null, approved: false, rejected: false, errorMsg: null, prompt: fullPrompt, basePrompt, notes: noteVal, continuityFrom: cf, seed });
+    engine.add(task);
+    return id;
+  }
+}
+window.retryCard = (id) => { regenerateCard(id, { priority: 0 }); };
+
+window.keepVariant = async (variantId) => {
+  const v = S.docs.get(variantId); if (!v || !v.variantOf) return;
+  const parentId = v.variantOf;
+  const siblings = [...S.docs.values()].filter(d => d.variantOf === parentId);
+  const vFull = imageStore.full.get(variantId)?.blob;
+  const vThumb = imageStore.thumb.get(variantId);
+  const blob = vFull || vThumb?.blob;
+  if (!blob) { showToast('Variant image not found.', 'error'); return; }
+  await imageStore.setFull(parentId, blob);
+  setCardStatus(parentId, 'success');
+  const thumb = await refreshThumb(parentId);
+  try { await IDB.put('images', parentId, { blob, mime: blob.type }); } catch (e) {}
+  await patchDoc(parentId, { status: 'success', thumbData: thumb ? thumb.b64 : null, hasFull: true, prompt: v.prompt, notes: v.notes || '', basePrompt: v.basePrompt, seed: v.seed ?? null });
+  for (const s of siblings) {
+    try { await IDB.del('images', s.id); } catch (e) {}
+    imageStore.drop(s.id);
+    S.docs.delete(s.id);
+    removeCardDOM(s.id);
+  }
+  refreshToolbarCounts(); applySortFilter();
+  showToast('Variant saved as primary frame.', 'success');
+};
+
+window.retryFailed = async (selectedOnly) => {
+  if (S.batch.runId) { showToast('A batch is already running.', 'warning'); return; }
+  let ids;
+  if (selectedOnly && S.selected.size) ids = [...S.selected];
+  else ids = [...S.docs.values()].filter(d => ['error', 'interrupted', 'stopped'].includes(d.status)).map(d => d.id);
+  if (!ids.length) { showToast('Nothing to retry.', 'info'); return; }
+  const runId = crypto.randomUUID();
+  S.batch = { runId, total: ids.length, done: 0, failed: 0, retrying: 0, startedAt: Date.now(), activeMs: 0, lastTick: Date.now(), paused: false, stopped: false, durations: [] };
+  gate.setMax(parseInt(document.getElementById('batch-concurrency').value) || 4);
+  updateBatchButtons(); startBatchTimer();
+  document.getElementById('batch-stats').classList.remove('hidden');
+  renderBatchHealth();
+  for (const id of ids) await regenerateCard(id, { priority: 1, runId });
+  showToast(`Retrying ${ids.length} shot(s)…`, 'info');
+};
+
+// ==========================================
+// § CLAUDE 5.5 MULTIMODAL CONTINUITY QA GRADER
+// ==========================================
+const QA_PROMPT = (prompt, names, bible) => `You are an expert film continuity supervisor. Judge the GENERATED IMAGE against the SHOT description${names.length ? ` and character REFERENCES for: ${names.join(', ')}` : ''}.
+SHOT: "${prompt}"${bible ? `\nPROJECT STYLE BIBLE: "${bible}"` : ''}
+Evaluate: (1) Actor likeness fidelity (facial traits, hair, skin tone, build, costume); (2) No unwanted duplicate or extra characters; (3) Cinematography style conformity; (4) Shot action depiction; (5) Anatomical defects.
+Return ONLY JSON: {"verdict":"pass"|"check"|"fail","issues":["concise issue description"],"suggested_fix":"instruction to append to prompt to fix the discrepancy"}`;
+
+const qa = {
+  q: [], running: 0, MAX: 2,
+  enqueue(id, subjectNames) { if (!S.qaEnabled) return; this.q.push({ id, subjectNames }); this.pump(); },
+  pump() { while (this.running < this.MAX && this.q.length) { this.run(this.q.shift()); } },
+  async run(j) {
+    this.running++;
+    try {
+      const d = S.docs.get(j.id) || {};
+      const thumb = imageStore.thumb.get(j.id) || await imageStore.makeThumb(j.id);
+      if (!thumb) return;
+      const matched = S.refs.subject.filter(r => r.data && j.subjectNames.includes(r.name));
+
+      let res = null;
+
+      // Check if user has an Anthropic Claude API Key configured
+      if (CLAUDE_API_KEY && CLAUDE_API_KEY.startsWith('sk-ant')) {
+        try {
+          const content = [{ type: 'text', text: QA_PROMPT(d.prompt || '', matched.map(r => r.name), S.styleBible) }];
+          matched.forEach(r => {
+            content.push({ type: 'text', text: `REFERENCE: "${r.name}"` });
+            content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: r.data } });
+          });
+          content.push({ type: 'text', text: 'GENERATED FRAME:' });
+          content.push({ type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: thumb.b64 } });
+
+          const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
+            method: 'POST',
+            headers: {
+              'x-api-key': CLAUDE_API_KEY,
+              'anthropic-version': '2023-06-01',
+              'content-type': 'application/json',
+              'anthropic-dangerous-direct-browser-access': 'true'
+            },
+            body: JSON.stringify({
+              model: 'claude-3-7-sonnet-20250219',
+              max_tokens: 400,
+              messages: [{ role: 'user', content }]
+            })
+          });
+          if (anthropicRes.ok) {
+            const antData = await anthropicRes.json();
+            const txt = antData.content?.[0]?.text || '{}';
+            const json = JSON.parse(txt.match(/\{[\s\S]*\}/)?.[0] || '{}');
+            res = { verdict: ['pass', 'check', 'fail'].includes(json.verdict) ? json.verdict : 'check', issues: (json.issues || []).slice(0, 5), suggestedFix: String(json.suggested_fix || '').slice(0, 400), checkedAt: Date.now() };
+          }
+        } catch (err) {
+          console.warn('Claude QA fallback to local vision:', err);
+        }
+      }
+
+      // Default/Fallback to Google Vision evaluator
+      if (!res) {
+        const parts = [{ text: QA_PROMPT(d.prompt || '', matched.map(r => r.name), S.styleBible) }];
+        matched.forEach(r => { parts.push({ text: `REFERENCE for "${r.name}"` }); parts.push(refPart(r)); });
+        parts.push({ text: 'GENERATED IMAGE:' });
+        parts.push({ inlineData: { mimeType: 'image/jpeg', data: thumb.b64 } });
+        const body = { contents: [{ role: 'user', parts }], generationConfig: { responseMimeType: 'application/json', temperature: 0.1 } };
+        let data = await apiCall('gemini-3-flash-preview', 'generateContent', body, null, () => {}, { noGate: true });
+        const txt = data.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '{}';
+        const json = JSON.parse(txt.match(/\{[\s\S]*\}/)?.[0] || '{}');
+        res = { verdict: ['pass', 'check', 'fail'].includes(json.verdict) ? json.verdict : 'check', issues: (json.issues || []).slice(0, 5), suggestedFix: String(json.suggested_fix || json.suggestedFix || '').slice(0, 400), checkedAt: Date.now() };
+      }
+
+      const cur = S.docs.get(j.id); if (cur) { cur.qa = res; syncCardMeta(j.id, cur); }
+      patchDoc(j.id, { qa: res });
+    } catch (e) { console.warn('qa', e); }
+    finally { this.running--; this.pump(); refreshToolbarCounts(); }
+  }
+};
+
+// ==========================================
+// § CANVAS RENDERING
+// ==========================================
+function ratioPad(ratio) {
+  let w = 16, h = 9;
+  if (ratio && String(ratio).includes(':')) {
+    const p = String(ratio).split(':'); const pw = parseFloat(p[0]), ph = parseFloat(p[1]);
+    if (!isNaN(pw) && !isNaN(ph) && pw > 0 && ph > 0) { w = pw; h = ph; }
+  }
+  return (h / w) * 100;
+}
+function characterBadgeHTML(name) {
+  return `<div class="bg-zinc-900/90 backdrop-blur text-lime-300 font-mono text-[10px] font-bold px-2.5 py-1 rounded-full shadow border border-lime-400/30 flex items-center gap-1">${icon('user', 'w-3 h-3 text-lime-400')} ${window.escapeHTML(name)}</div>`;
+}
+function timecodeBadgeHTML(tc) {
+  return `<div class="card-tc bg-zinc-900/90 backdrop-blur text-white font-mono text-[10px] font-bold px-2.5 py-1 rounded-full shadow border border-white/20 flex items-center gap-1">${icon('clock', 'w-3 h-3 text-lime-400')} ${window.escapeHTML(tc)}</div>`;
+}
+function anchorBadgeHTML() {
+  return `<div class="bg-green-600/90 text-white font-mono text-[10px] font-bold px-2 py-1 rounded-full shadow flex items-center">📌</div>`;
+}
+function variantBadgeHTML(id) {
+  return `<div class="bg-fuchsia-600/90 text-white font-mono text-[10px] font-bold px-2 py-1 rounded-full shadow flex items-center gap-1.5">var <button onclick="window.keepVariant('${id}')" class="underline font-bold">Keep</button></div>`;
+}
+function visualHTML(id, d) {
+  const status = d.status || 'loading';
+  if (status === 'success') {
+    const url = imageStore.thumbUrl(id, d) || imageStore.full.get(id)?.url;
+    if (url) {
+      return `<img src="${url}" loading="lazy" decoding="async" class="absolute inset-0 w-full h-full object-cover animate-fade-in canvas-image cursor-pointer" data-cardid="${id}" draggable="true" ondragstart="window.canvasDragStart(event,this.dataset.cardid)" onclick="window.openLightboxByCardId(this.dataset.cardid)" title="Drag to sidebar or click to inspect">`;
+    }
+    return `<div class="absolute inset-0 bg-zinc-100 flex items-center justify-center">${icon('loader-2', 'w-8 h-8 animate-spin text-zinc-400')}</div>`;
+  }
+  if (status === 'error') {
+    return `<div class="absolute inset-0 bg-red-50 flex flex-col items-center justify-center text-red-500 gap-2 px-4 text-center">
+      ${icon('alert-circle', 'w-8 h-8')}
+      <div class="text-xs font-semibold max-w-[90%] truncate">${window.escapeHTML((d.errorMsg || 'Error').slice(0, 120))}</div>
+      <button onclick="window.retryCard('${id}')" class="px-3 py-1.5 bg-zinc-900 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 hover:bg-zinc-800">${icon('rotate-ccw', 'w-3.5 h-3.5')} Retry</button>
+    </div>`;
+  }
+  if (status === 'stopped' || status === 'interrupted') {
+    return `<div class="absolute inset-0 bg-zinc-100 flex flex-col items-center justify-center text-zinc-500 gap-2">
+      ${icon('square', 'w-8 h-8')}
+      <div class="text-sm font-medium capitalize">${status}</div>
+      <button onclick="window.retryCard('${id}')" class="px-3 py-1.5 bg-zinc-900 text-white rounded-xl text-[11px] font-bold flex items-center gap-1.5 hover:bg-zinc-800">${icon('rotate-ccw', 'w-3.5 h-3.5')} Retry</button>
+    </div>`;
+  }
+  return `<div class="absolute inset-0 bg-zinc-100 flex items-center justify-center">${icon('loader-2', 'w-8 h-8 animate-spin text-zinc-400')}</div>`;
+}
+
+function renderCard(d, opts = {}) {
+  document.getElementById('empty-state').classList.add('hidden');
+  const id = d.id;
+  const card = document.createElement('div');
+  card.id = `card-${id}`;
+  card.dataset.order = String(d.orderIndex || 0);
+  card.dataset.tc = d.timecode || '';
+  card.dataset.status = d.status || 'loading';
+  card.dataset.charactername = d.characterName || '';
+  card.className = 'card-item bg-white rounded-3xl shadow-sm border border-zinc-200 overflow-hidden animate-slide-up relative group w-full';
+  const pad = ratioPad(d.aspectRatio);
+  const visual = visualHTML(id, d);
+  const safePrompt = window.escapeHTML(d.prompt || '');
+
+  card.innerHTML = `
+  <input type="checkbox" data-cardid="${id}" onchange="window.toggleCardSelection(this.dataset.cardid, this.checked)" class="absolute top-4 left-4 z-20 w-5 h-5 accent-zinc-900 cursor-pointer opacity-0 group-hover:opacity-100 checked:opacity-100 transition-opacity ${S.selected.has(id) ? 'opacity-100' : ''}" ${S.selected.has(id) ? 'checked' : ''}>
+  <div class="absolute top-3.5 right-3.5 z-20 flex items-center gap-1.5 flex-wrap justify-end card-badges">
+    ${d.characterName ? characterBadgeHTML(d.characterName) : ''}
+    ${d.timecode ? timecodeBadgeHTML(d.timecode) : ''}
+    <span class="qa-badge" id="qabadge-${id}"></span>
+    ${d.anchor ? anchorBadgeHTML() : ''}
+    ${d.variantOf ? variantBadgeHTML(id) : ''}
+  </div>
+  <div class="visual-container w-full relative bg-zinc-100" id="visual-${id}" style="padding-bottom:${pad}%">
+    ${visual}
+    <div class="status-pill hidden" id="pill-${id}"></div>
+  </div>
+  <div class="card-body p-3.5 border-t border-zinc-100 flex items-start gap-3 relative">
+    <div class="absolute top-3 right-3 z-20 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity card-actions-group">
+      <button onclick="window.toggleApprove('${id}')" title="Approve" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600">${icon('check')}</button>
+      <button data-prompt="${safePrompt}" onclick="window.copyPrompt(this.dataset.prompt)" title="Copy Prompt" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600">${icon('copy')}</button>
+      <button data-cardid="${id}" onclick="window.openRegenerateModal(this.dataset.cardid)" title="Regenerate with Notes" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600">${icon('refresh-cw')}</button>
+      <button data-cardid="${id}" onclick="window.toggleAnchor(this.dataset.cardid)" title="Pin as Anchor" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600">${icon('pin')}</button>
+      <button data-cardid="${id}" onclick="window.openLightboxByCardId(this.dataset.cardid)" title="View Fullscreen" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600">${icon('maximize')}</button>
+      <button onclick="window.toggleCardMinimize('${id}')" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-zinc-600 min-btn" title="Minimize">${icon('minimize-2')}</button>
+      <button onclick="window.deleteCard('${id}')" title="Delete" class="p-2 bg-white/90 backdrop-blur rounded-xl shadow-sm border border-black/5 hover:bg-zinc-100 text-red-500">${icon('trash-2')}</button>
+    </div>
+    <div class="w-6 h-6 rounded-full bg-zinc-900 text-cine-lime flex items-center justify-center flex-shrink-0 mt-0.5 border border-black/10">${icon('clapperboard', 'w-3 h-3')}</div>
+    <div class="flex-1 pr-44">
+      <div class="card-meta flex items-center gap-2 flex-wrap mb-0.5">
+        ${d.characterName ? `<span class="text-[10px] font-bold text-zinc-900 bg-lime-200 px-2 py-0.5 rounded-md font-mono">👤 ${window.escapeHTML(d.characterName)}</span>` : ''}
+        ${d.timecode ? `<span class="card-tc text-[10px] font-bold text-zinc-800 bg-zinc-200 px-1.5 py-0.5 rounded font-mono">⏱️ ${window.escapeHTML(d.timecode)}</span>` : ''}
+        ${d.context ? `<p class="text-[10px] font-bold text-zinc-500 uppercase tracking-wide">[${window.escapeHTML(d.context)}]</p>` : ''}
+      </div>
+      <p class="card-prompt text-[13px] text-zinc-700 leading-snug font-medium line-clamp-2" title="${safePrompt}">${safePrompt}</p>
+    </div>
+  </div>`;
+  insertCardSorted(card);
+  S.cardStatus.set(id, d.status || 'loading');
+  syncCardMeta(id, d);
+  applyCardTimecodeVisibility(card);
+  if (!opts.skipScroll) card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function insertCardSorted(card) {
+  const container = document.getElementById('canvas-container');
+  const empty = document.getElementById('empty-state');
+  const order = parseFloat(card.dataset.order || '0');
+  const siblings = [...container.querySelectorAll('.card-item')];
+  let inserted = false;
+  for (const sib of siblings) {
+    if (parseFloat(sib.dataset.order || '0') > order) { container.insertBefore(card, sib); inserted = true; break; }
+  }
+  if (!inserted) container.insertBefore(card, empty);
+  document.getElementById('empty-state').classList.add('hidden');
+}
+function refreshEmptyState() {
+  const has = document.querySelector('#canvas-container .card-item');
+  document.getElementById('empty-state').classList.toggle('hidden', !!has);
+}
+
+function setCardStatus(id, status, extra) {
+  if (S.cardStatus.get(id) === status) return;
+  S.cardStatus.set(id, status);
+  const el = document.getElementById(`card-${id}`);
+  if (el) el.dataset.status = status;
+  const visual = document.getElementById(`visual-${id}`);
+  if (visual) {
+    const d = { ...(S.docs.get(id) || {}), ...(extra || {}), status };
+    visual.innerHTML = visualHTML(id, d) + `<div class="status-pill hidden" id="pill-${id}"></div>`;
+  }
+  if (isLightboxOpen()) window.refreshLightboxItems();
+  refreshToolbarCounts();
+}
+function setCardPill(id, text) {
+  const pill = document.getElementById(`pill-${id}`);
+  if (!pill) return;
+  if (text) { pill.textContent = text; pill.classList.remove('hidden'); }
+  else { pill.textContent = ''; pill.classList.add('hidden'); }
+}
+function syncCardMeta(id, d) {
+  const el = document.getElementById(`card-${id}`);
+  if (!el) return;
+  el.classList.toggle('approved', !!d.approved);
+  el.classList.toggle('rejected', !!d.rejected && !d.approved);
+  el.classList.toggle('qa-check', d.qa?.verdict === 'check' && !d.approved);
+  el.classList.toggle('qa-fail', d.qa?.verdict === 'fail' && !d.approved);
+  const promptEl = el.querySelector('.card-prompt');
+  if (promptEl && promptEl.textContent !== (d.prompt || '')) { promptEl.textContent = d.prompt || ''; promptEl.title = d.prompt || ''; }
+  const qaBadge = document.getElementById(`qabadge-${id}`);
+  if (qaBadge) {
+    if (d.qa) {
+      const v = d.qa.verdict;
+      const map = { pass: ['✅', 'bg-green-600', ''], check: ['⚠', 'bg-amber-500', 'CHECK'], fail: ['✖', 'bg-red-600', 'FAIL'] };
+      const [sym, bg, label] = map[v] || map.check;
+      qaBadge.innerHTML = `<span class="${bg} text-white font-mono text-[10px] font-bold px-2 py-1 rounded-full shadow cursor-help" title="${window.escapeHTML((d.qa.issues || []).join(' · ') || 'QA ' + v)}">${sym}${label ? ' ' + label : ''}</span>`;
+    } else qaBadge.innerHTML = '';
+  }
+}
+
+// Layout, Sort, Filter
+window.setLayout = (layout) => {
+  S.layout = layout;
+  const c = document.getElementById('canvas-container');
+  c.classList.remove('canvas-grid', 'canvas-grid-s', 'canvas-grid-m', 'canvas-grid-l', 'canvas-list');
+  if (layout === 'list') c.classList.add('canvas-list');
+  else c.classList.add('canvas-grid', `canvas-grid-${layout.slice(-1)}`);
+  const sel = document.getElementById('layout-select'); if (sel) sel.value = layout;
+  kvPut('layout', layout);
+};
+window.cycleLayout = () => {
+  const order = ['grid-s', 'grid-m', 'grid-l', 'list'];
+  window.setLayout(order[(order.indexOf(S.layout) + 1) % order.length]);
+};
+window.setSort = (sort) => { S.sort = sort; kvPut('sort', sort); applySortFilter(); };
+window.setFilter = (filter) => {
+  S.filter = filter; kvPut('filter', filter);
+  document.querySelectorAll('#filter-chips .fchip').forEach(b => b.classList.toggle('fchip-active', b.dataset.f === filter));
+  applySortFilter();
+};
+function comparator(sort) {
+  const orderOf = c => parseFloat(c.dataset.order || '0');
+  return (a, b) => {
+    if (sort === 'timecode') {
+      const ta = tcToSeconds(a.dataset.tc), tb = tcToSeconds(b.dataset.tc);
+      if (ta !== tb) return ta - tb;
+      return orderOf(a) - orderOf(b);
+    }
+    if (sort === 'attention') {
+      const rank = c => {
+        const st = c.dataset.status;
+        if (c.classList.contains('qa-fail') || st === 'error') return 0;
+        if (c.classList.contains('qa-check') || st === 'interrupted' || st === 'stopped') return 1;
+        return 2;
+      };
+      const ra = rank(a), rb = rank(b);
+      if (ra !== rb) return ra - rb;
+      return orderOf(a) - orderOf(b);
+    }
+    if (sort === 'newest') return orderOf(b) - orderOf(a);
+    return orderOf(a) - orderOf(b);
+  };
+}
+function tcToSeconds(tc) {
+  if (!tc) return Number.MAX_SAFE_INTEGER;
+  const p = tc.split(':').map(Number);
+  return (p[0] || 0) * 3600 + (p[1] || 0) * 60 + (p[2] || 0);
+}
+function matchesFilter(c) {
+  const f = S.filter;
+  if (f === 'all') return true;
+  const st = c.dataset.status;
+  const qaFail = c.classList.contains('qa-fail'), qaCheck = c.classList.contains('qa-check');
+  if (f === 'review') return qaFail || qaCheck || ['error', 'interrupted', 'stopped'].includes(st);
+  if (f === 'failed') return st === 'error';
+  if (f === 'flagged') return qaFail || qaCheck;
+  if (f === 'approved') return c.classList.contains('approved');
+  if (f === 'unreviewed') return !c.classList.contains('approved') && !c.classList.contains('rejected');
+  if (f === 'anchors') return !!S.docs.get(c.id.replace('card-', ''))?.anchor;
+  return true;
+}
+function applySortFilter() {
+  const container = document.getElementById('canvas-container');
+  const cards = [...container.querySelectorAll('.card-item')];
+  if (!cards.length) { refreshEmptyState(); return; }
+  const sorted = cards.sort(comparator(S.sort));
+  const frag = document.createDocumentFragment();
+  sorted.forEach(c => frag.appendChild(c));
+  container.appendChild(frag);
+  container.appendChild(document.getElementById('empty-state'));
+  cards.forEach(c => c.classList.toggle('is-hidden', !matchesFilter(c)));
+}
+function refreshToolbarCounts() {
+  const docs = [...S.docs.values()].filter(d => !S.pendingDelete.has(d.id));
+  const total = docs.length;
+  const ok = docs.filter(d => d.status === 'success').length;
+  const failed = docs.filter(d => d.status === 'error' || d.status === 'interrupted').length;
+  const flagged = docs.filter(d => d.qa && d.qa.verdict !== 'pass').length;
+  const approved = docs.filter(d => d.approved).length;
+  const el = document.getElementById('toolbar-counts');
+  if (el) el.textContent = `${total} shots · ${ok} rendered · ${failed} failed · ${flagged} flagged · ${approved} approved`;
+}
+window.nextFlagged = () => {
+  const container = document.getElementById('canvas-container');
+  const cards = [...container.querySelectorAll('.card-item')].filter(c => !c.classList.contains('is-hidden'));
+  const flagged = cards.filter(c => {
+    const d = S.docs.get(c.id.replace('card-', ''));
+    return (d && d.qa && d.qa.verdict !== 'pass') || c.dataset.status === 'error';
+  });
+  if (!flagged.length) { showToast('No flagged shots. Continuity pristine! 🎉', 'success'); return; }
+  const scrollTop = container.scrollTop + 80;
+  const target = flagged.find(c => c.offsetTop > scrollTop) || flagged[0];
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  target.classList.add('ring-4', 'ring-lime-400');
+  setTimeout(() => target.classList.remove('ring-4', 'ring-lime-400'), 1200);
+};
+window.toggleCardMinimize = (id) => {
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+  card.classList.toggle('card-compact');
+};
+
+// Selection Box
+const canvasEl = document.getElementById('canvas-container');
+const selectionBox = document.getElementById('selection-box');
+let isSelecting = false, startX = 0, startY = 0, selRects = [], selStartScroll = 0;
+
+canvasEl.addEventListener('mousedown', (e) => {
+  if (e.target.closest('button, select, input, textarea, .card-actions-group, .visual-container, img')) return;
+  if (e.button !== 0) return;
+  isSelecting = true; startX = e.clientX; startY = e.clientY;
+  selStartScroll = canvasEl.scrollTop;
+  selRects = [...canvasEl.querySelectorAll('.card-item')].filter(c => !c.classList.contains('is-hidden'))
+    .map(c => ({ id: c.id.replace('card-', ''), rect: c.getBoundingClientRect() }));
+  selectionBox.style.left = `${startX}px`; selectionBox.style.top = `${startY}px`;
+  selectionBox.style.width = '0px'; selectionBox.style.height = '0px';
+  selectionBox.style.display = 'block';
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isSelecting) return;
+  const x = Math.min(startX, e.clientX), y = Math.min(startY, e.clientY);
+  const w = Math.abs(e.clientX - startX), h = Math.abs(e.clientY - startY);
+  selectionBox.style.left = `${x}px`; selectionBox.style.top = `${y}px`;
+  selectionBox.style.width = `${w}px`; selectionBox.style.height = `${h}px`;
+  const boxRect = selectionBox.getBoundingClientRect();
+  const dy = canvasEl.scrollTop - selStartScroll;
+  selRects.forEach(({ id, rect }) => {
+    const top = rect.top - dy, bottom = rect.bottom - dy;
+    const overlap = !(boxRect.right < rect.left || boxRect.left > rect.right || boxRect.bottom < top || boxRect.top > bottom);
+    if (overlap) {
+      S.selected.add(id);
+      const cb = document.querySelector(`#card-${id} input[type="checkbox"]`);
+      if (cb) { cb.checked = true; cb.classList.add('opacity-100'); }
+    }
+  });
+  window.updateActionBar();
+});
+window.addEventListener('mouseup', () => {
+  if (isSelecting) { isSelecting = false; selectionBox.style.display = 'none'; }
+});
+
+window.toggleCardSelection = (id, isChecked) => { if (isChecked) S.selected.add(id); else S.selected.delete(id); window.updateActionBar(); };
+window.clearSelection = () => {
+  S.selected.clear();
+  document.querySelectorAll('#canvas-container input[type="checkbox"]').forEach(cb => { cb.checked = false; cb.classList.remove('opacity-100'); });
+  window.updateActionBar();
+};
+window.updateActionBar = () => {
+  const bar = document.getElementById('batch-action-bar');
+  if (S.selected.size > 0) {
+    document.getElementById('selected-count').textContent = S.selected.size;
+    bar.classList.remove('opacity-0', 'pointer-events-none', 'scale-95');
+    bar.classList.add('opacity-100', 'pointer-events-auto', 'scale-100');
+  } else {
+    bar.classList.add('opacity-0', 'pointer-events-none', 'scale-95');
+    bar.classList.remove('opacity-100', 'pointer-events-auto', 'scale-100');
+  }
+};
+window.selectAllVisibleCards = () => {
+  [...canvasEl.querySelectorAll('.card-item')].filter(c => !c.classList.contains('is-hidden')).forEach(card => {
+    const id = card.id.replace('card-', '');
+    S.selected.add(id);
+    const cb = card.querySelector('input[type="checkbox"]');
+    if (cb) { cb.checked = true; cb.classList.add('opacity-100'); }
+  });
+  window.updateActionBar();
+};
+function orderedSelectedIds() {
+  return [...document.querySelectorAll('#canvas-container .card-item')]
+    .filter(c => !c.classList.contains('is-hidden'))
+    .map(c => c.id.replace('card-', ''))
+    .filter(id => S.selected.has(id));
+}
+
+async function setCardFlags(id, patch) {
+  const d = S.docs.get(id); if (!d) return;
+  Object.assign(d, patch);
+  syncCardMeta(id, d);
+  refreshToolbarCounts();
+  patchDoc(id, patch);
+}
+window.toggleApprove = (id) => { const d = S.docs.get(id); if (d) setCardFlags(id, { approved: !d.approved, rejected: false }); };
+window.toggleAnchor = (id) => { const d = S.docs.get(id); if (d) setCardFlags(id, { anchor: !d.anchor }); };
+window.approveSelected = async () => {
+  const n = S.selected.size; if (!n) return;
+  for (const id of [...S.selected]) await setCardFlags(id, { approved: true, rejected: false });
+  showToast(`${n} shots approved.`, 'success');
+};
+window.rejectSelected = async () => {
+  const n = S.selected.size; if (!n) return;
+  for (const id of [...S.selected]) await setCardFlags(id, { approved: false, rejected: true });
+  showToast(`${n} shots rejected.`, 'info');
+};
+
+window.deleteSelected = () => { if (S.selected.size) window.deleteCards([...S.selected]); };
+window.deleteCard = (id) => window.deleteCards([id]);
+window.deleteCards = (ids) => {
+  if (!ids.length) return;
+  ids.forEach(id => {
+    engine.stopOne(id);
+    S.pendingDelete.add(id);
+    document.getElementById(`card-${id}`)?.remove();
+    S.selected.delete(id);
+  });
+  window.updateActionBar();
+  refreshToolbarCounts(); refreshEmptyState();
+  const undo = () => {
+    ids.forEach(id => {
+      S.pendingDelete.delete(id);
+      const d = S.docs.get(id);
+      if (d && !S.pendingDelete.has(id)) renderCard(d);
+    });
+    refreshToolbarCounts(); applySortFilter(); refreshEmptyState();
+  };
+  const expire = () => {
+    ids.forEach(id => {
+      if (!S.pendingDelete.has(id)) return;
+      S.pendingDelete.delete(id);
+      try { IDB.del('images', id); } catch (e) {}
+      imageStore.drop(id);
+      S.docs.delete(id);
+    });
+    refreshToolbarCounts();
+  };
+  showToast(`Deleted ${ids.length} · Undo`, 'warning', { label: 'Undo', onClick: undo });
+  setTimeout(expire, 8000);
+};
+
+// ==========================================
+// § LIGHTBOX
+// ==========================================
+function isLightboxOpen() { const lb = document.getElementById('lightbox'); return lb && !lb.classList.contains('hidden'); }
+window.getCurrentSessionGalleryItems = () => {
+  return [...document.querySelectorAll('#canvas-container .card-item')]
+    .filter(c => !c.classList.contains('is-hidden'))
+    .map(c => {
+      const id = c.id.replace('card-', '');
+      const d = S.docs.get(id);
+      if (!d || d.status !== 'success') return null;
+      return { id, prompt: d.prompt || '', model: d.model || 'Unknown', context: d.context || '', timecode: d.timecode || '', qa: d.qa || null, approved: !!d.approved };
+    }).filter(Boolean);
+};
+window.refreshLightboxItems = () => {
+  if (!isLightboxOpen()) return;
+  const currentId = S.lightbox.items[S.lightbox.index]?.id;
+  const fresh = window.getCurrentSessionGalleryItems();
+  if (!fresh.length) return;
+  S.lightbox.items = fresh;
+  let idx = fresh.findIndex(it => it.id === currentId);
+  if (idx === -1) idx = Math.min(S.lightbox.index, fresh.length - 1);
+  window.showLightboxItem(idx);
+};
+window.showLightboxItem = async (index) => {
+  if (!S.lightbox.items.length) return;
+  if (index < 0) index = S.lightbox.items.length - 1;
+  if (index >= S.lightbox.items.length) index = 0;
+  S.lightbox.index = index;
+  const item = S.lightbox.items[index];
+  const imgEl = document.getElementById('lightbox-img');
+  const thumb = imageStore.thumbUrl(item.id, S.docs.get(item.id));
+  if (thumb) imgEl.src = thumb;
+  imgEl.dataset.cardid = item.id;
+  const ctxOverlay = document.getElementById('lightbox-context-overlay');
+  if (item.context) { ctxOverlay.textContent = `[ ${item.context} ]`; ctxOverlay.classList.remove('hidden'); }
+  else ctxOverlay.classList.add('hidden');
+  document.getElementById('lightbox-counter').textContent = `${index + 1} / ${S.lightbox.items.length}`;
+  document.getElementById('lightbox-model').textContent = item.model || 'Render Model';
+  const tcEl = document.getElementById('lightbox-timecode');
+  if (S.mode === 'timestamp' && item.timecode) { tcEl.textContent = `⏱️ ${item.timecode}`; tcEl.hidden = false; }
+  else tcEl.hidden = true;
+  const qaWrap = document.getElementById('lightbox-qa');
+  if (item.qa) {
+    const map = { pass: ['✅ PASS QA', 'bg-green-600 text-white'], check: ['⚠ CHECK FIDELITY', 'bg-amber-500 text-zinc-950 font-bold'], fail: ['✖ CONTINUITY FAIL', 'bg-red-600 text-white'] };
+    const [label, cls] = map[item.qa.verdict] || map.check;
+    const verdictEl = document.getElementById('lightbox-qa-verdict');
+    verdictEl.textContent = label;
+    verdictEl.className = `font-mono font-bold text-xs px-2.5 py-1 rounded-full ${cls}`;
+    document.getElementById('lightbox-qa-issues').textContent = (item.qa.issues || []).join('  ·  ');
+    const fixEl = document.getElementById('lightbox-qa-fix');
+    fixEl.textContent = item.qa.suggestedFix ? `💡 Suggested Fix: ${item.qa.suggestedFix}` : '';
+    fixEl.classList.toggle('hidden', !item.qa.suggestedFix);
+    qaWrap.classList.remove('hidden');
+  } else qaWrap.classList.add('hidden');
+  document.getElementById('lightbox-prompt').textContent = item.prompt;
+  const full = await imageStore.getFullUrl(item.id);
+  if (S.lightbox.index === index && full && imgEl.dataset.cardid === item.id) imgEl.src = full;
+};
+window.openLightboxByCardId = (cardId) => {
+  S.lightbox.items = window.getCurrentSessionGalleryItems();
+  let index = S.lightbox.items.findIndex(it => it.id === cardId);
+  if (index === -1) {
+    const d = S.docs.get(cardId);
+    if (!d || d.status !== 'success') return;
+    S.lightbox.items = [{ id: cardId, prompt: d.prompt || '', model: d.model || 'Unknown', context: d.context || '', timecode: d.timecode || '', qa: d.qa || null, approved: !!d.approved }];
+    index = 0;
+  }
+  window.showLightboxItem(index);
+  const lb = document.getElementById('lightbox');
+  lb.classList.remove('hidden');
+  setTimeout(() => lb.classList.remove('opacity-0'), 10);
+};
+window.nextLightboxImage = () => { window.refreshLightboxItems(); window.showLightboxItem(S.lightbox.index + 1); };
+window.prevLightboxImage = () => { window.refreshLightboxItems(); window.showLightboxItem(S.lightbox.index - 1); };
+window.closeLightbox = () => {
+  const lb = document.getElementById('lightbox');
+  lb.classList.add('opacity-0');
+  setTimeout(() => { lb.classList.add('hidden'); document.getElementById('lightbox-img').src = ''; }, 300);
+};
+window.regenerateFromLightbox = () => {
+  const currentItem = S.lightbox.items[S.lightbox.index];
+  if (currentItem) { window.closeLightbox(); window.openRegenerateModal(currentItem.id); }
+};
+window.lbApprove = async () => { const it = S.lightbox.items[S.lightbox.index]; if (it) { await setCardFlags(it.id, { approved: true, rejected: false }); window.nextLightboxImage(); } };
+window.lbReject = async () => { const it = S.lightbox.items[S.lightbox.index]; if (it) { await setCardFlags(it.id, { approved: false, rejected: true }); window.nextLightboxImage(); } };
+window.lbTogglePin = async () => { const it = S.lightbox.items[S.lightbox.index]; if (it) { const d = S.docs.get(it.id); if (d) await setCardFlags(it.id, { anchor: !d.anchor }); } };
+window.lbDownload = async () => {
+  const it = S.lightbox.items[S.lightbox.index]; if (!it) return;
+  const blob = await imageStore.getFullBlob(it.id);
+  if (blob) { downloadBlob(blob, exportFilename(it.id, S.lightbox.index + 1, blob.type.includes('png') ? 'png' : 'jpg')); showToast('Image downloaded.', 'success'); }
+};
+
+// ==========================================
+// § EXPORTS (NLE ZIP / PDF / STORYBOARD ZIP)
+// ==========================================
+function exportFilename(id, idx = 1, ext = 'jpg') {
+  const d = S.docs.get(id);
+  if (S.mode === 'timestamp' && d?.timecode) {
+    const fmt = document.getElementById('timestamp-filename-format')?.value || 'hyphens';
+    return `${formatTimecodeFilename(d.timecode, fmt, idx)}.${ext}`;
+  }
+  return `cineforge-${id}.${ext}`;
+}
+function wrapTextToLines(ctx, text, maxWidth) {
+  const words = text.split(' ');
+  const lines = [];
+  let currentLine = words[0];
+  for (let i = 1; i < words.length; i++) {
+    const word = words[i];
+    const width = ctx.measureText(currentLine + ' ' + word).width;
+    if (width < maxWidth) currentLine += ' ' + word;
+    else { lines.push(currentLine); currentLine = word; }
+  }
+  lines.push(currentLine);
+  return lines;
+}
+
+window.downloadSelectedImages = async () => {
+  const ids = orderedSelectedIds();
+  if (!ids.length) return;
+  let count = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const blob = await imageStore.getFullBlob(ids[i]);
+    if (blob) {
+      const ext = blob.type.includes('png') ? 'png' : 'jpg';
+      downloadBlob(blob, exportFilename(ids[i], i + 1, ext));
+      count++;
+      await sleep(150);
+    }
+  }
+  window.clearSelection();
+  showToast(`Downloaded ${count} image(s).`, 'success');
+};
+
+window.downloadSelectedPdf = async () => {
+  if (!window.jspdf) { showToast('PDF Library loading, try again in a moment.', 'warning'); return; }
+  const ids = orderedSelectedIds();
+  if (!ids.length) { showToast('Select cards first.', 'warning'); return; }
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p', 'mm', 'a4');
+  let added = false;
+  for (const id of ids) {
+    const d = S.docs.get(id); if (!d) continue;
+    const blob = await imageStore.getFullBlob(id); if (!blob) continue;
+    const src = await blobToDataUrl(blob);
+    if (added) pdf.addPage();
+    const contextText = d.context || '';
+    const promptText = d.prompt || '';
+    const timecodeText = (S.mode === 'timestamp' ? d.timecode : '') || '';
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
+    const margin = 15;
+    pdf.setTextColor(0, 0, 0);
+    let topY = margin + 5;
+    if (timecodeText || contextText) {
+      pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12);
+      const headerStr = [timecodeText ? `Time: ${timecodeText}` : '', contextText ? `Scene: ${contextText}` : ''].filter(Boolean).join('  |  ');
+      const topLines = pdf.splitTextToSize(headerStr, pdfWidth - (margin * 2));
+      pdf.text(topLines, margin, topY);
+      topY += (topLines.length * 5) + 5;
+    }
+    pdf.setFont('helvetica', 'normal'); pdf.setFontSize(11);
+    const bottomLines = pdf.splitTextToSize('Shot: ' + promptText, pdfWidth - (margin * 2));
+    const bottomHeight = bottomLines.length * 5;
+    const bottomY = pdfHeight - margin - bottomHeight;
+    pdf.text(bottomLines, margin, bottomY);
+    const availableHeight = (bottomY - 10) - (topY + 5);
+    const availableWidth = pdfWidth - (margin * 2);
+    const imgProps = pdf.getImageProperties(src);
+    let finalW = availableWidth;
+    let finalH = (imgProps.height * finalW) / imgProps.width;
+    if (finalH > availableHeight) { finalH = availableHeight; finalW = (imgProps.width * finalH) / imgProps.height; }
+    const xOffset = margin + (availableWidth - finalW) / 2;
+    const yOffset = topY + (availableHeight - finalH) / 2;
+    pdf.addImage(src, 'JPEG', xOffset, yOffset, finalW, finalH);
+    added = true;
+    await sleep(0);
+  }
+  if (added) pdf.save(`CineForge_Storyboard_${Date.now()}.pdf`);
+  window.clearSelection();
+  showToast('CineForge PDF generated successfully!', 'success');
+};
+
+window.downloadSelectedZip = async () => {
+  if (!window.JSZip) { showToast('ZIP library is loading.', 'error'); return; }
+  const ids = orderedSelectedIds();
+  if (!ids.length) { showToast('Select cards first.', 'warning'); return; }
+  showToast(`Packing storyboard cards ZIP (0/${ids.length})…`, 'info');
+  const zip = new JSZip();
+  let packed = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const d = S.docs.get(id);
+    const blob = await imageStore.getFullBlob(id);
+    if (!d || !blob) continue;
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const contentWidth = 1200, padding = 60;
+    const maxTextWidth = contentWidth - (padding * 2);
+    ctx.font = 'bold 28px sans-serif';
+    const headerInfo = [
+      (S.mode === 'timestamp' && d.timecode) ? `Timecode: [${d.timecode}]` : '',
+      d.context ? `Scene: [${d.context}]` : ''
+    ].filter(Boolean).join('  |  ');
+    const contextLines = headerInfo ? wrapTextToLines(ctx, headerInfo, maxTextWidth) : [];
+    ctx.font = '24px sans-serif';
+    const promptLines = d.prompt ? wrapTextToLines(ctx, `Shot: ${d.prompt}`, maxTextWidth) : [];
+    const lineHeightContext = 36, lineHeightPrompt = 32;
+    const topHeight = contextLines.length > 0 ? padding + (contextLines.length * lineHeightContext) : padding;
+    const bottomHeight = promptLines.length > 0 ? padding + (promptLines.length * lineHeightPrompt) : padding;
+    const scale = maxTextWidth / img.width;
+    const scaledImgHeight = img.height * scale;
+    canvas.width = contentWidth;
+    canvas.height = topHeight + scaledImgHeight + bottomHeight;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = '#18181b'; ctx.font = 'bold 28px sans-serif';
+    let currY = padding + 20;
+    contextLines.forEach(line => { ctx.fillText(line, padding, currY); currY += lineHeightContext; });
+    const imgY = contextLines.length > 0 ? currY + 10 : padding;
+    ctx.drawImage(img, padding, imgY, maxTextWidth, scaledImgHeight);
+    currY = imgY + scaledImgHeight + padding;
+    ctx.fillStyle = '#3f3f46'; ctx.font = '24px sans-serif';
+    promptLines.forEach(line => { ctx.fillText(line, padding, currY); currY += lineHeightPrompt; });
+    URL.revokeObjectURL(url);
+    const outBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    const paddedIndex = String(i + 1).padStart(3, '0');
+    zip.file(`shot_${paddedIndex}_${id}.jpg`, outBlob);
+    packed++;
+    if (packed % 5 === 0) { showToast(`Packing ${packed}/${ids.length}…`, 'info'); await sleep(0); }
+  }
+  try {
+    const content = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(content, `CineForge_Storyboards_${Date.now()}.zip`);
+    showToast('Storyboard ZIP created and downloaded!', 'success');
+  } catch (e) { showToast('Failed to generate ZIP.', 'error'); console.error(e); }
+  window.clearSelection();
+};
+
+window.downloadAutoEditorZip = async () => {
+  if (S.mode !== 'timestamp') { showToast('Timeline ZIP requires Timeline Sync mode.', 'warning'); return; }
+  if (!window.JSZip) { showToast('ZIP library is loading.', 'error'); return; }
+  let ids = orderedSelectedIds();
+  const approvedOnly = document.getElementById('ae-approved-only')?.checked;
+  if (approvedOnly && ids.length) {
+    const approved = ids.filter(id => S.docs.get(id)?.approved);
+    if (approved.length) ids = approved;
+    else {
+      const ok = await window.customConfirm('No approved cards in selection. Export all selected instead?');
+      if (!ok) return;
+    }
+  }
+  if (!ids.length) {
+    ids = [...document.querySelectorAll('#canvas-container .card-item')].filter(c => !c.classList.contains('is-hidden')).map(c => c.id.replace('card-', ''));
+  }
+  if (!ids.length) { showToast('No images available to export.', 'warning'); return; }
+  showToast(`Packaging ${ids.length} clean images with timeline_manifest.json…`, 'info');
+  const zip = new JSZip();
+  const filenameFormat = document.getElementById('timestamp-filename-format')?.value || 'hyphens';
+  const manifest = [], missing = [];
+  let packed = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const d = S.docs.get(id);
+    const blob = await imageStore.getFullBlob(id);
+    if (!blob) continue;
+    if (!d?.timecode) missing.push({ id, prompt: d?.prompt || '' });
+    const ext = blob.type.includes('png') ? 'png' : 'jpg';
+    const cleanName = `${formatTimecodeFilename(d?.timecode || '', filenameFormat, i + 1)}.${ext}`;
+    zip.file(cleanName, blob);
+    manifest.push({ filename: cleanName, timecode: d?.timecode || null, prompt: d?.prompt || '', approved: !!d?.approved, qa: d?.qa?.verdict || null });
+    packed++;
+    if (packed % 5 === 0) { showToast(`Packing ${packed}/${ids.length}…`, 'info'); await sleep(0); }
+  }
+  zip.file('timeline_manifest.json', JSON.stringify({ generator: 'CineForge AI', timestamp: Date.now(), images: manifest, missing_timecodes: missing }, null, 2));
+  try {
+    const content = await zip.generateAsync({ type: 'blob' });
+    downloadBlob(content, `CineForge_NLE_Timeline_${Date.now()}.zip`);
+    showToast('⏱️ CineForge NLE Timeline ZIP ready!', 'success');
+  } catch (e) { showToast('Failed to generate NLE Timeline ZIP.', 'error'); console.error(e); }
+  window.clearSelection();
+};
+
+// ==========================================
+// § CAST BUILDER
+// ==========================================
+function parseRosterLine(line) {
+  let s = (line || '').trim();
+  if (!s) return null;
+  s = s.replace(/^[●•▪◦\-]\s*/, '');
+  const curly = s.match(/^\{([^}]+)\}\s*(.*)$/);
+  if (curly) return { name: curly[1].trim(), desc: curly[2].trim() };
+  const m = s.match(/^([^:]{1,80}?)\s*:\s*(.+)$/);
+  if (m) {
+    const name = m[1].trim();
+    if (name && name.split(/\s+/).length <= 10 && !/[.!?]$/.test(name)) return { name, desc: m[2].trim() };
+  }
+  return { name: null, desc: s };
+}
+window.previewCast = () => {
+  const style = document.getElementById('cast-style').value.trim();
+  const lines = document.getElementById('cast-input').value.split('\n').map(l => l.trim()).filter(Boolean);
+  const out = lines.map(l => {
+    const r = parseRosterLine(l);
+    const suffix = style ? `, ${style}` : '';
+    return r.name ? `{${r.name}} ${r.desc}${suffix}` : r.desc + suffix;
+  });
+  const wrap = document.getElementById('cast-preview');
+  wrap.innerHTML = out.length
+    ? out.map(l => `<div class="truncate" title="${window.escapeHTML(l)}">${window.escapeHTML(l)}</div>`).join('')
+    : '<div class="text-zinc-400 italic">Preview appears here…</div>';
+};
+window.openCastBuilder = () => {
+  const m = document.getElementById('cast-modal');
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+  window.previewCast();
+  lucide.createIcons();
+};
+window.closeCastBuilder = () => {
+  const m = document.getElementById('cast-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+};
+window.applyCast = (mode) => {
+  const style = document.getElementById('cast-style').value.trim();
+  const lines = document.getElementById('cast-input').value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) { showToast('Paste a roster first.', 'warning'); return; }
+  const out = lines.map(l => {
+    const r = parseRosterLine(l);
+    const suffix = style ? `, ${style}` : '';
+    return r.name ? `{${r.name}} ${r.desc}${suffix}` : r.desc + suffix;
+  });
+  const bt = document.getElementById('batch-input');
+  bt.value = (mode === 'append' && bt.value.trim() ? bt.value.trim() + '\n' : '') + out.join('\n');
+  window.updateBatchCount(true);
+  window.closeCastBuilder();
+  if (mode === 'run') { document.getElementById('right-sidebar').classList.remove('sidebar-right-closed'); window.runBatch(); }
+  else showToast(`${out.length} cast lines added.`, 'success');
+};
+
+// ==========================================
+// § MODALS & PREFLIGHT
+// ==========================================
+let regenContinuityId = null;
+window.setRegenMode = (mode) => {
+  document.getElementById('regen-mode-value').value = mode;
+  document.getElementById('regen-mode-append').classList.toggle('rv-active', mode === 'append');
+  document.getElementById('regen-mode-replace').classList.toggle('rv-active', mode === 'replace');
+};
+window.setRegenVariants = (v) => {
+  document.getElementById('regen-variants-value').value = String(v);
+  document.querySelectorAll('#regenerate-modal .rv-btn[data-v]').forEach(b => b.classList.toggle('rv-active', b.dataset.v === String(v)));
+};
+window.openRegenerateModal = (id) => {
+  const d = S.docs.get(id); if (!d) return;
+  document.getElementById('regen-card-id').value = id;
+  document.getElementById('regen-multi-ids').value = '';
+  document.getElementById('regen-base-section').classList.remove('hidden');
+  document.getElementById('regen-base-prompt').value = d.basePrompt || d.prompt || '';
+  const ctxEl = document.getElementById('regen-original-context');
+  if (d.context) { ctxEl.textContent = `[${d.context}]`; ctxEl.classList.remove('hidden'); }
+  else { ctxEl.textContent = ''; ctxEl.classList.add('hidden'); }
+  const tcBadge = document.getElementById('regen-timecode-badge');
+  if (d.timecode) { tcBadge.textContent = `⏱️ ${d.timecode}`; tcBadge.classList.remove('hidden'); tcBadge.hidden = S.mode !== 'timestamp'; }
+  else tcBadge.classList.add('hidden');
+  const fixChip = document.getElementById('regen-fix-chip');
+  if (d.qa?.suggestedFix) { fixChip.classList.remove('hidden'); fixChip.dataset.fix = d.qa.suggestedFix; fixChip.title = d.qa.suggestedFix; }
+  else fixChip.classList.add('hidden');
+  document.getElementById('regen-notes').value = '';
+  window.setRegenMode('append');
+  window.setRegenVariants(1);
+  regenContinuityId = d.continuityFrom || null;
+  renderRegenContinuity();
+  document.getElementById('regen-ratio-badge').textContent = d.aspectRatio || '16:9';
+  document.getElementById('regen-model-badge').textContent = document.getElementById('model-select').selectedOptions[0]?.textContent || 'model';
+  const m = document.getElementById('regenerate-modal');
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+};
+window.openRegenerateModalMulti = () => {
+  const ids = [...S.selected]; if (!ids.length) return;
+  document.getElementById('regen-multi-ids').value = ids.join(',');
+  document.getElementById('regen-card-id').value = '';
+  document.getElementById('regen-base-section').classList.add('hidden');
+  const ctxEl = document.getElementById('regen-original-context');
+  ctxEl.textContent = `${ids.length} shots selected — adjustments apply to all.`; ctxEl.classList.remove('hidden');
+  document.getElementById('regen-timecode-badge').classList.add('hidden');
+  document.getElementById('regen-fix-chip').classList.add('hidden');
+  document.getElementById('regen-notes').value = '';
+  window.setRegenMode('append');
+  window.setRegenVariants(1);
+  regenContinuityId = null;
+  renderRegenContinuity();
+  const m = document.getElementById('regenerate-modal');
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+};
+window.regenerateSelected = () => { if (S.selected.size) window.openRegenerateModalMulti(); };
+window.closeRegenerateModal = () => {
+  const m = document.getElementById('regenerate-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+};
+window.addRegenTemplate = (type) => {
+  const notesEl = document.getElementById('regen-notes');
+  const templates = {
+    1: "Actor facial structure and outfit does not match reference. Lock likeness strictly to subject image.",
+    2: "Background lighting and set dressing is inconsistent. Re-render with faithful environment layout.",
+    3: "Keep environment, props, lighting, and costume identical to the continuity frame; adjust only: "
+  };
+  notesEl.value = notesEl.value ? notesEl.value + ' ' + templates[type] : templates[type];
+  notesEl.focus();
+};
+window.applySuggestedFix = () => {
+  const chip = document.getElementById('regen-fix-chip');
+  const notes = document.getElementById('regen-notes');
+  if (!chip.dataset.fix) return;
+  notes.value = notes.value ? notes.value + ' ' + chip.dataset.fix : chip.dataset.fix;
+  notes.focus();
+};
+function renderRegenContinuity() {
+  const info = document.getElementById('regen-continuity-info');
+  const clearBtn = document.getElementById('regen-continuity-clear');
+  if (regenContinuityId && S.docs.get(regenContinuityId)) {
+    const url = imageStore.thumbUrl(regenContinuityId, S.docs.get(regenContinuityId));
+    const d = S.docs.get(regenContinuityId);
+    info.innerHTML = `${url ? `<img src="${url}" class="w-10 h-10 rounded-lg object-cover bg-zinc-100">` : ''}<span class="text-xs font-semibold text-zinc-600">Using “${window.escapeHTML((d.prompt || '').slice(0, 40))}…” as previous frame</span>`;
+    clearBtn.classList.remove('hidden');
+  } else {
+    info.innerHTML = '<span class="text-xs text-zinc-400">Drop a shot card here to use as previous frame continuity</span>';
+    clearBtn.classList.add('hidden');
+  }
+}
+window.clearRegenContinuity = () => { regenContinuityId = null; renderRegenContinuity(); };
+const regenDz = document.getElementById('regen-continuity-drop');
+regenDz.addEventListener('dragover', e => { e.preventDefault(); regenDz.classList.add('drop-target-active'); });
+regenDz.addEventListener('dragleave', () => regenDz.classList.remove('drop-target-active'));
+regenDz.addEventListener('drop', e => {
+  e.preventDefault(); regenDz.classList.remove('drop-target-active');
+  const id = e.dataTransfer.getData('application/x-cineforge-card');
+  if (id && S.docs.get(id)?.status === 'success') { regenContinuityId = id; renderRegenContinuity(); }
+});
+window.executeRegenerate = async () => {
+  const multiIds = document.getElementById('regen-multi-ids').value;
+  const replace = document.getElementById('regen-mode-value').value === 'replace';
+  const notes = document.getElementById('regen-notes').value.trim();
+  const variants = parseInt(document.getElementById('regen-variants-value').value) || 1;
+  window.closeRegenerateModal();
+  if (multiIds) {
+    const ids = multiIds.split(',');
+    for (const id of ids) await regenerateCard(id, { notes, variants, continuityFrom: regenContinuityId });
+    window.clearSelection();
+    showToast(`Regenerating ${ids.length} shot(s)…`, 'info');
+  } else {
+    const id = document.getElementById('regen-card-id').value;
+    const base = replace ? document.getElementById('regen-base-prompt').value.trim() : null;
+    if (!id) return;
+    await regenerateCard(id, { notes, replacePrompt: base, variants, continuityFrom: regenContinuityId });
+    showToast('Regenerating…', 'info');
+  }
+};
+
+// SESSIONS MODAL
+window.openHistoryModal = async () => {
+  const modal = document.getElementById('history-modal');
+  const list = document.getElementById('history-list');
+  modal.classList.remove('hidden');
+  setTimeout(() => modal.classList.remove('opacity-0'), 10);
+  const keys = (await IDB.keys('kv').catch(() => [])) || [];
+  const sessionKeys = keys.filter(k => String(k).startsWith('session_'));
+  if (!sessionKeys.length) {
+    list.innerHTML = '<div class="p-6 text-center text-zinc-500">No previous sessions saved.</div>';
+    return;
+  }
+  list.innerHTML = sessionKeys.map(k => `
+    <div class="p-3 bg-white rounded-xl border border-zinc-200 flex items-center justify-between">
+      <span class="text-xs font-mono font-semibold text-zinc-800">${k.replace('session_', '')}</span>
+      <button onclick="window.loadSession('${k.replace('session_', '')}')" class="text-xs font-bold bg-zinc-900 text-white px-3 py-1 rounded-lg">Load</button>
+    </div>
+  `).join('');
+};
+window.closeHistoryModal = () => {
+  const modal = document.getElementById('history-modal');
+  modal.classList.add('opacity-0');
+  setTimeout(() => modal.classList.add('hidden'), 300);
+};
+window.newSession = () => {
+  S.sessionId = crypto.randomUUID();
+  window.clearSelection();
+  saveProject();
+  document.querySelectorAll('#canvas-container .card-item').forEach(el => el.remove());
+  document.getElementById('empty-state').classList.remove('hidden');
+  showToast('New CineForge Canvas session started.', 'info');
+};
+window.loadSession = async (sessionId) => {
+  S.sessionId = sessionId;
+  const docs = await IDB.get('kv', `session_${sessionId}`).catch(() => []);
+  if (Array.isArray(docs)) {
+    document.querySelectorAll('#canvas-container .card-item').forEach(el => el.remove());
+    S.docs.clear();
+    docs.forEach(d => { S.docs.set(d.id, d); renderCard(d); });
+  }
+  window.closeHistoryModal();
+  refreshToolbarCounts();
+};
+
+// MOVE MODAL
+window.moveSelectedToCategory = (category) => { if (S.selected.size) window.openMoveModal(category); };
+window.openMoveModal = (category) => {
+  const m = document.getElementById('move-modal');
+  m.dataset.category = category;
+  document.getElementById('move-msg').textContent = `Move ${S.selected.size} image(s) to ${category}`;
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+};
+window.closeMoveModal = () => {
+  const m = document.getElementById('move-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+};
+window.executeMove = async (mode) => {
+  const category = document.getElementById('move-modal').dataset.category;
+  window.closeMoveModal();
+  const ids = orderedSelectedIds();
+  if (!ids.length) return;
+  let targetIndexes = [];
+  if (mode === 'fill') {
+    S.refs[category].forEach((ref, idx) => { if (!ref.data && targetIndexes.length < ids.length) targetIndexes.push(idx); });
+    while (targetIndexes.length < ids.length) { S.refs[category].push(newSlot()); targetIndexes.push(S.refs[category].length - 1); }
+  } else {
+    ids.forEach(() => { S.refs[category].push(newSlot()); targetIndexes.push(S.refs[category].length - 1); });
+  }
+  let moved = 0;
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    const d = S.docs.get(id);
+    const blob = await imageStore.getFullBlob(id);
+    if (!blob) continue;
+    const name = (category === 'subject' && d?.characterName) ? d.characterName : undefined;
+    await ingestRefImage(category, targetIndexes[i], blob, { name });
+    moved++;
+  }
+  window.clearSelection();
+  const left = document.getElementById('left-sidebar');
+  if (left.classList.contains('sidebar-left-closed')) window.toggleSidebar('left-sidebar');
+  showToast(`Moved ${moved} shot(s) to ${category}.`, 'success');
+};
+
+// PROJECT MODAL
+window.openProjectModal = async () => {
+  const keys = (await IDB.keys('projects').catch(() => [])) || [];
+  const list = [];
+  for (const k of keys) { const p = await IDB.get('projects', k).catch(() => null); if (p) list.push(p); }
+  list.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const wrap = document.getElementById('project-list');
+  wrap.innerHTML = list.map(p => `
+    <div class="p-3 rounded-2xl border ${p.id === S.projectId ? 'bg-white border-zinc-900 ring-2 ring-zinc-900/10' : 'bg-white border-zinc-200'} flex items-center justify-between">
+      <div class="cursor-pointer flex-1 min-w-0" onclick="window.switchProject('${p.id}')">
+        <h4 class="font-bold text-zinc-900 text-xs truncate">${window.escapeHTML(p.name || p.id)}</h4>
+        <p class="text-[10px] text-zinc-500">${p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : ''}</p>
+      </div>
+      <div class="flex gap-1">
+        <button onclick="window.deleteProject('${p.id}')" class="p-1.5 text-zinc-400 hover:text-red-500">${icon('trash-2')}</button>
+      </div>
+    </div>`).join('') || '<div class="p-4 text-center text-zinc-400 text-xs">No saved projects yet.</div>';
+  const m = document.getElementById('project-modal');
+  m.classList.remove('hidden');
+  setTimeout(() => m.classList.remove('opacity-0'), 10);
+};
+window.closeProjectModal = () => {
+  const m = document.getElementById('project-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+};
+window.newProject = async () => {
+  const name = prompt('Project name:'); if (!name) return;
+  const id = crypto.randomUUID();
+  await IDB.put('projects', id, { id, name, refs: { subject: [newSlot()], scene: [newSlot()], style: [newSlot()] }, styleBible: '', batchText: '', updatedAt: Date.now() });
+  window.closeProjectModal();
+  window.switchProject(id);
+};
+window.deleteProject = async (id) => {
+  if (id === 'default') { showToast('Default project cannot be deleted.', 'warning'); return; }
+  await IDB.del('projects', id);
+  if (id === S.projectId) window.switchProject('default');
+  else window.openProjectModal();
+};
+window.exportProject = async () => {
+  const p = await IDB.get('projects', S.projectId).catch(() => null);
+  if (!p) { showToast('No project data to export.', 'warning'); return; }
+  downloadBlob(new Blob([JSON.stringify(p, null, 2)], { type: 'application/json' }), `CineForge-project-${(p.name || p.id).replace(/[^a-z0-9_-]/gi, '_')}.json`);
+};
+window.importProject = () => {
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'application/json';
+  inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    try {
+      const p = JSON.parse(await f.text());
+      const id = p.id || crypto.randomUUID();
+      await IDB.put('projects', id, { ...p, id, updatedAt: Date.now() });
+      showToast('Project imported successfully!', 'success');
+      window.closeProjectModal();
+      window.switchProject(id);
+    } catch (e) { showToast('Import failed: invalid project JSON.', 'error'); }
+  };
+  inp.click();
+};
+window.switchProject = async (id) => {
+  await saveProject();
+  kvPut('currentProjectId', id);
+  S.projectId = id;
+  const p = await IDB.get('projects', id).catch(() => null);
+  if (p && p.refs && p.refs.subject) {
+    S.refs = { subject: p.refs.subject || [], scene: p.refs.scene || [], style: p.refs.style || [] };
+    S.styleBible = p.styleBible || '';
+    document.getElementById('style-bible').value = S.styleBible;
+    document.getElementById('batch-input').value = p.batchText || '';
+    document.getElementById('project-name-label').textContent = p.name || id;
+  }
+  renderSidebar();
+  window.updateBatchCount(true);
+  window.closeProjectModal();
+  showToast(`Project “${document.getElementById('project-name-label').textContent}” active.`, 'info');
+};
+
+// PREFLIGHT
+let preflightResolve = null;
+window.runPreflight = (rawLines) => {
+  return new Promise(async (resolve) => {
+    try {
+      const skip = await kvGet(`skipPreflight:${S.projectId}`);
+      if (skip) { resolve(true); return; }
+    } catch (e) {}
+    const parsed = rawLines.map(parseLine).filter(p => p.prompt);
+    const rows = [];
+    const n = parsed.length;
+    const chained = parsed.filter(p => p.chain).length;
+    const maxP = parseInt(document.getElementById('batch-concurrency').value) || 4;
+    rows.push({ cls: 'text-zinc-800 font-semibold', text: `${n} shots · ${chained} continuity-chained (>) · ${maxP}x parallel workers` });
+    const named = S.refs.subject.filter(r => r.data && (r.name || '').trim());
+    named.forEach(r => rows.push({ cls: 'text-zinc-600', text: `Actor “${r.name}” likeness reference locked.` }));
+    if (!named.length) rows.push({ cls: 'text-amber-700', text: 'Notice: No actor reference portraits locked. Standard synthesis will be used.' });
+    const wrap = document.getElementById('preflight-rows');
+    wrap.innerHTML = rows.map(r => `<div class="${r.cls}"><span>${window.escapeHTML(r.text)}</span></div>`).join('');
+    preflightResolve = resolve;
+    const m = document.getElementById('preflight-modal');
+    m.classList.remove('hidden');
+    setTimeout(() => m.classList.remove('opacity-0'), 10);
+  });
+};
+window.closePreflight = (run) => {
+  const m = document.getElementById('preflight-modal');
+  m.classList.add('opacity-0');
+  setTimeout(() => m.classList.add('hidden'), 300);
+  if (document.getElementById('preflight-skip').checked) kvPut(`skipPreflight:${S.projectId}`, true);
+  if (preflightResolve) { preflightResolve(run); preflightResolve = null; }
+};
+
+// MODES
+window.setMode = (m) => {
+  if (S.mode === m) return;
+  S.mode = m;
+  kvPut('mode', m);
+  applyMode();
+  showToast(m === 'timestamp' ? '⏱️ Timeline Sync Mode enabled!' : 'Standard Mode active', m === 'timestamp' ? 'success' : 'info');
+};
+window.mirrorMode = (tsOn) => window.setMode(tsOn ? 'timestamp' : 'standard');
+
+function applyCardTimecodeVisibility(scope) {
+  (scope || document).querySelectorAll('.card-tc').forEach(el => { el.style.display = S.mode === 'timestamp' ? '' : 'none'; });
+}
+function applyMode() {
+  document.querySelectorAll('.ts-only').forEach(el => { el.hidden = S.mode !== 'timestamp'; });
+  document.querySelectorAll('.std-only').forEach(el => { el.hidden = S.mode !== 'standard'; });
+  const bt = document.getElementById('batch-input');
+  bt.placeholder = S.mode === 'timestamp'
+    ? '[00:00:00] Master shot of city skyline [Act 1]\n[00:00:15] {Gregor} walking into candlelit bank [Act 1]\n> [00:00:18] Close-up Gregor smiling'
+    : '{Gregor} Scottish con man in 1820s uniform\n{Evelyn} Victorian heiress in parlor\n> same man, eyes now open, same bed and room';
+  const std = document.getElementById('mode-std-btn'), ts = document.getElementById('mode-ts-btn');
+  std.classList.toggle('mode-active', S.mode === 'standard');
+  ts.classList.toggle('mode-active', S.mode === 'timestamp');
+  const tgl = document.getElementById('timestamp-mode-toggle'); if (tgl) tgl.checked = S.mode === 'timestamp';
+  const tcOpt = document.getElementById('sort-tc-option'); if (tcOpt) tcOpt.hidden = S.mode !== 'timestamp';
+  applyCardTimecodeVisibility();
+}
+
+// PERSISTENCE
+async function saveProject() {
+  if (!S.projectId) return;
+  const refsClean = {};
+  ['subject', 'scene', 'style'].forEach(c => {
+    refsClean[c] = S.refs[c].map(r => ({ id: r.id, data: r.data, mime: r.mime, name: r.name || '', sheet: r.sheet || '' }));
+  });
+  const p = {
+    id: S.projectId,
+    name: document.getElementById('project-name-label').textContent || S.projectId,
+    refs: refsClean, styleBible: S.styleBible,
+    batchText: document.getElementById('batch-input').value,
+    lastSessionId: S.sessionId,
+    updatedAt: Date.now()
+  };
+  try { await IDB.put('projects', S.projectId, p); } catch (e) {}
+}
+let saveProjectTimer = null;
+function saveProjectDebounced() { clearTimeout(saveProjectTimer); saveProjectTimer = setTimeout(saveProject, 600); }
+window.onStyleBibleInput = (val) => { S.styleBible = val; saveProjectDebounced(); };
+window.toggleSeedLock = (checked) => {
+  S.seedLock = checked;
+  document.getElementById('seed-input-wrap').classList.toggle('hidden', !checked);
+  if (checked && S.seed == null) { S.seed = Math.floor(Math.random() * 2147483646) + 1; document.getElementById('seed-value').value = S.seed; }
+  saveProjectDebounced();
+};
+window.setSeedValue = (v) => { S.seed = parseInt(v) || null; };
+window.setAutoAnchor = (checked) => { S.autoAnchor = checked; saveProjectDebounced(); };
+window.setQaEnabled = (checked) => { S.qaEnabled = checked; saveProjectDebounced(); };
+
+window.toggleSidebar = (id) => {
+  const el = document.getElementById(id);
+  const closedClass = id === 'left-sidebar' ? 'sidebar-left-closed' : 'sidebar-right-closed';
+  el.classList.toggle(closedClass);
+  kvPut(id === 'left-sidebar' ? 'leftOpen' : 'rightOpen', !el.classList.contains(closedClass));
+};
+window.autoGrow = (el) => { el.style.height = '5px'; el.style.height = (el.scrollHeight) + 'px'; };
+window.handleEnter = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); window.generateSingle(); } };
+window.handleRatioChange = () => {
+  const select = document.getElementById('aspect-ratio');
+  const input = document.getElementById('custom-ratio-input');
+  if (select.value === 'custom') { input.classList.remove('hidden'); input.focus(); }
+  else input.classList.add('hidden');
+  saveProjectDebounced();
+};
+window.checkCustomRatioBlur = () => {
+  const input = document.getElementById('custom-ratio-input');
+  if (input.value.trim() === '') { input.classList.add('hidden'); document.getElementById('aspect-ratio').value = '16:9'; }
+};
+window.copyPrompt = (text) => {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => showToast('Prompt copied to clipboard!', 'success'));
+  }
+};
+window.appendStyle = (styleString, ev) => {
+  if (ev && ev.shiftKey) {
+    const inputEl = document.getElementById('main-prompt');
+    let currentVal = inputEl.value.trim();
+    if (currentVal && !currentVal.endsWith(',')) currentVal += ', ';
+    inputEl.value = currentVal + styleString;
+    window.autoGrow(inputEl); inputEl.focus();
+  } else {
+    const bibleEl = document.getElementById('style-bible');
+    let currentVal = bibleEl.value.trim();
+    bibleEl.value = currentVal ? currentVal + ', ' + styleString : styleString;
+    S.styleBible = bibleEl.value;
+    saveProjectDebounced();
+    showToast('Appended to Style Bible.', 'info');
+  }
+};
+
+// Continuity frame
+const composeWrap = document.getElementById('compose-wrap');
+composeWrap.addEventListener('dragover', e => {
+  if ([...e.dataTransfer.types].includes('application/x-cineforge-card')) { e.preventDefault(); composeWrap.classList.add('drop-target-active'); }
+});
+composeWrap.addEventListener('dragleave', () => composeWrap.classList.remove('drop-target-active'));
+composeWrap.addEventListener('drop', e => {
+  composeWrap.classList.remove('drop-target-active');
+  if (![...e.dataTransfer.types].includes('application/x-cineforge-card')) return;
+  e.preventDefault();
+  const id = e.dataTransfer.getData('application/x-cineforge-card');
+  if (id && S.docs.get(id)?.status === 'success') {
+    const url = imageStore.thumbUrl(id, S.docs.get(id));
+    S.continuityFrame = { id, thumbUrl: url };
+    document.getElementById('continuity-chip-row').classList.remove('hidden');
+    document.getElementById('continuity-thumb').src = url || '';
+    showToast('Continuity reference attached to subsequent shots.', 'success');
+  }
+});
+window.clearContinuityFrame = () => {
+  S.continuityFrame = null;
+  document.getElementById('continuity-chip-row').classList.add('hidden');
+  document.getElementById('continuity-thumb').src = '';
+};
+
+// GLOBAL LISTENERS
+window.addEventListener('keydown', (e) => {
+  const activeEl = document.activeElement;
+  const inInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+  if (inInput && activeEl.id === 'batch-input' && (e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); window.runBatch(); return; }
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'a' && !inInput) { e.preventDefault(); window.selectAllVisibleCards(); return; }
+  if (inInput) return;
+  const lb = document.getElementById('lightbox');
+  if (lb.classList.contains('hidden')) return;
+  const k = e.key.toLowerCase();
+  if (e.key === 'ArrowRight') { window.nextLightboxImage(); return; }
+  if (e.key === 'ArrowLeft') { window.prevLightboxImage(); return; }
+  if (e.key === 'Escape') { window.closeLightbox(); return; }
+  if (k === 'a') window.lbApprove();
+  else if (k === 'x') window.lbReject();
+  else if (k === 'r') window.regenerateFromLightbox();
+  else if (k === 'p') window.lbTogglePin();
+  else if (k === 'd') window.lbDownload();
+  else if (k === 'f') window.nextFlagged();
+});
+
+// BOOT
+(async function boot() {
+  lucide.createIcons();
+
+  const kvMode = await kvGet('mode'); if (kvMode === 'timestamp' || kvMode === 'standard') S.mode = kvMode;
+  const kvLayout = await kvGet('layout'); if (kvLayout) S.layout = kvLayout;
+  const kvSort = await kvGet('sort'); if (kvSort) S.sort = kvSort;
+  const kvFilter = await kvGet('filter'); if (kvFilter) S.filter = kvFilter;
+
+  applyMode();
+  window.setLayout(S.layout);
+  document.getElementById('sort-select').value = S.sort;
+  window.setFilter(S.filter);
+
+  // Load project
+  const pid = (await kvGet('currentProjectId')) || 'default';
+  S.projectId = pid;
+  let proj = await IDB.get('projects', pid).catch(() => null);
+  if (!proj) {
+    proj = { id: pid, name: 'Default Project', refs: { subject: [newSlot()], scene: [newSlot()], style: [newSlot()] }, styleBible: '', batchText: '', updatedAt: Date.now() };
+    await IDB.put('projects', pid, proj).catch(() => {});
+  }
+  if (proj.refs) {
+    S.refs = { subject: proj.refs.subject || [newSlot()], scene: proj.refs.scene || [newSlot()], style: proj.refs.style || [newSlot()] };
+    S.styleBible = proj.styleBible || '';
+    document.getElementById('style-bible').value = S.styleBible;
+    document.getElementById('batch-input').value = proj.batchText || '';
+  }
+  document.getElementById('project-name-label').textContent = proj.name || 'Default Project';
+  renderSidebar();
+  window.updateBatchCount();
+
+  showSingleGenerationState(false);
+  updateBatchButtons();
+})();
+</script>
+</body>
+</html>
